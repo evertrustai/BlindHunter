@@ -49,4 +49,4 @@ network without putting your own authentication in front of it.**
 
 ## License
 
-MIT © evertrustai
+MIT © evertrustai .
