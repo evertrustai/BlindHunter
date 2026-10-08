@@ -6,7 +6,7 @@ Self-host it, connect any LLM provider — cloud or local — and keep full cont
 leaves your machine. BlindHunter reads and writes files, runs terminal commands, and drives
 an engagement from recon to a documented finding.
 
-> ⚠️ In development — not production-ready yet.
+![BlindHunter](docs/screenshot.png)
 
 ## Highlights
 
