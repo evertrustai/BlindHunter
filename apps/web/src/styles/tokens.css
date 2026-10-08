@@ -37,7 +37,7 @@
   --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   /* brand wordmark — Shlop, with a clean fallback */
-  --font-logo: "Shlop", "IBM Plex Sans", system-ui, sans-serif;
+  --font-logo: "Rubik Glitch", "IBM Plex Sans", system-ui, sans-serif;
 }
 
 /* Light theme — white base, #1A1A1A text, #4D4D4D grey, #FF4400 accent. */
