@@ -668,7 +668,7 @@
 }
 .ab-word {
   font-family: var(--font-logo);
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.06em;
   font-size: 22px;
   color: var(--txt);
