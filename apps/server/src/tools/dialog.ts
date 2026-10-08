@@ -4,14 +4,15 @@ import os from 'node:os'
 import path from 'node:path'
 
 function run(cmd: string, args: string[]): Promise<{ code: number; out: string; err: string }> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const child = spawn(cmd, args, { windowsHide: false })
     let out = ''
     let err = ''
     child.stdout.on('data', (d: Buffer) => (out += d.toString()))
     child.stderr.on('data', (d: Buffer) => (err += d.toString()))
     child.on('close', (code) => resolve({ code: code ?? 0, out, err }))
-    child.on('error', reject)
+    // ENOENT (tool not installed, e.g. zenity on a minimal Kali) — report as code 127, don't crash.
+    child.on('error', (e) => resolve({ code: 127, out, err: String(e) }))
   })
 }
 
@@ -105,6 +106,9 @@ export async function pickFolderDialog(): Promise<string | null> {
     ])
     return code === 0 ? out.trim() || null : null
   }
-  const { code, out } = await run('zenity', ['--file-selection', '--directory', '--title=Select a workspace folder'])
-  return code === 0 ? out.trim() || null : null
+  // Linux: try zenity (GTK), then kdialog (KDE). Minimal distros (e.g. Kali) may have neither —
+  // the in-app folder browser in the UI is the universal fallback that needs no native dialog.
+  let r = await run('zenity', ['--file-selection', '--directory', '--title=Select a workspace folder'])
+  if (r.code === 127) r = await run('kdialog', ['--getexistingdirectory', os.homedir()])
+  return r.code === 0 ? r.out.trim() || null : null
 }

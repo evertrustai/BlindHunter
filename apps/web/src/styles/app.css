@@ -811,6 +811,139 @@
   color: inherit;
   display: inline-flex;
 }
+
+/* ---------- in-app workspace folder browser ---------- */
+.wspick-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 320px;
+  max-width: 86vw;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wspick-path {
+  display: flex;
+  gap: 6px;
+}
+.wspick-path input {
+  flex: 1;
+  min-width: 0;
+  background: var(--ground);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  color: var(--txt);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px 9px;
+}
+.wspick-path input:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+.wspick-go {
+  flex: none;
+  width: 32px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: none;
+  color: var(--txt-2);
+  cursor: pointer;
+}
+.wspick-go:hover {
+  background: var(--panel-2);
+  color: var(--txt);
+}
+.wspick-err {
+  font-size: 12px;
+  color: var(--danger);
+  padding: 0 2px;
+}
+.wspick-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.wspick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: var(--txt-2);
+  font-size: 13px;
+  padding: 7px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wspick-row:hover {
+  background: var(--panel-2);
+  color: var(--txt);
+}
+.wspick-row.up {
+  color: var(--txt-3);
+  font-family: var(--font-mono);
+}
+.wspick-ico {
+  flex: none;
+}
+.wspick-note {
+  color: var(--txt-3);
+  font-size: 12.5px;
+  padding: 10px 9px;
+}
+.wspick-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.wspick-native {
+  background: none;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  color: var(--txt-2);
+  font-size: 12.5px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.wspick-native:hover {
+  color: var(--txt);
+  background: var(--panel-2);
+}
+.wspick-use {
+  background: var(--amber);
+  border: none;
+  border-radius: 8px;
+  color: var(--ground);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.wspick-use:hover {
+  background: var(--amber-2);
+}
+.wspick-use:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .box {
   position: relative;
   background: rgba(255, 255, 255, 0.015);
