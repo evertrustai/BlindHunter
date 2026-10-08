@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# BlindHunter runtime state (config, credentials, sessions)
+.blindhunter/
+~/.blindhunter/
+
+# brand wordmark font — user-supplied (licensing); see apps/web/public/fonts/README.txt
+apps/web/public/fonts/*.otf
+apps/web/public/fonts/*.ttf
+apps/web/public/fonts/*.woff
+apps/web/public/fonts/*.woff2
+
+# logs
+*.log
+logs/
+
+# editor / os
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/

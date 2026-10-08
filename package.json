@@ -1,0 +1,19 @@
+{
+  "name": "blindhunter",
+  "private": true,
+  "version": "0.1.0.1",
+  "description": "Privacy-first, model-agnostic, open-source AI coding agent for authorized security testing.",
+  "license": "MIT",
+  "author": "evertrustai",
+  "homepage": "https://github.com/evertrustai/BlindHunter",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @blindhunter/web dev",
+    "dev:server": "pnpm --filter @blindhunter/server dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

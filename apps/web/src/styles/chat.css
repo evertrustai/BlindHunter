@@ -1,0 +1,606 @@
+/* ---------- typeable composer input ---------- */
+.composer-input {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--txt);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  resize: none;
+  outline: none;
+  min-height: 24px;
+  max-height: 200px;
+  line-height: 1.5;
+  display: block;
+}
+.composer-input::placeholder {
+  color: var(--txt-3);
+}
+
+/* ---------- workspace picker panel ---------- */
+.wsp {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 25;
+  width: 340px;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.wsp-path {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--txt-2);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+.wsp-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.wsp-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--txt);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.wsp-item:hover {
+  background: var(--panel-2);
+}
+.wsp-item .fi {
+  color: var(--txt-3);
+  font-size: 12px;
+}
+.wsp-empty {
+  color: var(--txt-3);
+  font-size: 12.5px;
+  padding: 14px 12px;
+}
+.wsp-foot {
+  border-top: 1px solid var(--line);
+  padding: 10px;
+}
+.wsp-use {
+  width: 100%;
+  background: var(--amber);
+  color: var(--ground);
+  border: none;
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.wsp-use:hover {
+  background: var(--amber-2);
+}
+
+/* ---------- chat view ---------- */
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+}
+
+/* ---------- progress / task panel ---------- */
+.progress {
+  position: absolute;
+  top: 58px;
+  right: 20px;
+  z-index: 15;
+  max-width: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+/* the small pill shown by default */
+.progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 340px;
+  padding: 6px 12px;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--txt-2);
+}
+.progress-bar:hover {
+  color: var(--txt);
+}
+.progress.open .progress-bar {
+  border-radius: 12px 12px 0 0;
+  box-shadow: none;
+}
+.pb-ico {
+  flex: none;
+  color: var(--amber-2);
+  font-family: var(--font-mono);
+}
+.pb-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pb-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--txt-3);
+}
+.pb-caret {
+  flex: none;
+  margin-left: 2px;
+  color: var(--txt-3);
+  font-size: 10px;
+}
+/* the dropdown that opens under the pill */
+.progress-body {
+  width: 300px;
+  max-width: 100%;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+.progress-steps {
+  padding: 9px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.progress-step {
+  display: flex;
+  gap: 9px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.progress-step .ps-ico {
+  flex: none;
+  width: 13px;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+.progress-step.completed .ps-ico {
+  color: var(--ok);
+}
+.progress-step.completed .ps-title {
+  color: var(--txt-3);
+  text-decoration: line-through;
+}
+.progress-step.in_progress .ps-ico {
+  color: var(--amber-2);
+}
+.progress-step.in_progress .ps-title {
+  color: var(--txt);
+  font-weight: 500;
+}
+.progress-step.pending .ps-ico {
+  color: var(--txt-3);
+}
+.progress-step.pending .ps-title {
+  color: var(--txt-2);
+}
+.progress-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 13px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--txt-3);
+}
+.progress-foot .pf-meta {
+  font-family: var(--font-mono);
+}
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.chat-title {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chat-title .wsx {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--txt-3);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-weight: 400;
+}
+.chat-head-r {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12.5px;
+  color: var(--txt-2);
+}
+.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 3px 6px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.mode:hover {
+  background: var(--amber-soft);
+}
+.runchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ok);
+}
+.runchip .rd {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.chat-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 20px;
+}
+.chat-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.msg {
+  display: flex;
+}
+.msg.user {
+  justify-content: flex-end;
+}
+.msg.assistant {
+  justify-content: flex-start;
+}
+.msg .bubble {
+  max-width: 74%;
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+.msg.user .bubble {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-bottom-right-radius: 5px;
+}
+/* Assistant replies read as plain text on the page — no bubble, border or tint. */
+.msg.assistant .bubble {
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+  max-width: 100%;
+}
+.msg .bubble p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--txt);
+  white-space: pre-wrap;
+}
+.msg .bubble p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---- rendered markdown in assistant messages ---- */
+.md {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--txt);
+}
+.md > *:first-child {
+  margin-top: 0;
+}
+.md > *:last-child {
+  margin-bottom: 0;
+}
+.md p {
+  margin: 0 0 8px;
+}
+.md strong {
+  font-weight: 650;
+}
+.md em {
+  font-style: italic;
+}
+.md a {
+  color: var(--amber-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md a:hover {
+  color: var(--amber);
+}
+.md ul,
+.md ol {
+  margin: 6px 0 8px;
+  padding-left: 22px;
+}
+.md li {
+  margin: 2px 0;
+}
+.md li::marker {
+  color: var(--txt-3);
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 14px 0 8px;
+  line-height: 1.3;
+  font-weight: 650;
+  color: var(--txt);
+}
+.md h1 {
+  font-size: 18px;
+}
+.md h2 {
+  font-size: 16px;
+}
+.md h3 {
+  font-size: 14.5px;
+}
+.md h4 {
+  font-size: 13.5px;
+}
+/* inline code chip */
+.md code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--ground);
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  padding: 1px 5px;
+  color: var(--txt);
+  word-break: break-word;
+}
+/* fenced code block */
+.md pre {
+  margin: 8px 0;
+  padding: 12px 14px;
+  background: var(--ground);
+  border-radius: 10px;
+  overflow: auto;
+}
+.md pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--txt-2);
+}
+.md blockquote {
+  margin: 8px 0;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--line-2);
+  color: var(--txt-2);
+}
+.md hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 12px 0;
+}
+.md table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+.md th,
+.md td {
+  border: 1px solid var(--line-2);
+  padding: 5px 9px;
+  text-align: left;
+}
+.md th {
+  background: var(--panel-2);
+}
+
+/* ---- tool runs: a muted, borderless summary line that expands to clean output ---- */
+.toolg {
+  margin: 4px 0;
+}
+.toolg-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 3px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--txt-3);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  text-align: left;
+}
+.toolg-head:hover {
+  color: var(--txt-2);
+}
+.toolg-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toolg-cv {
+  flex: none;
+  font-size: 14px;
+  color: var(--txt-3);
+  transition: transform 0.15s ease;
+}
+.toolg-cv.open {
+  transform: rotate(90deg);
+}
+.toolg-spin {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-2);
+  border-top-color: var(--amber);
+  animation: bx-spin 0.7s linear infinite;
+}
+.toolg-body {
+  margin: 6px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.toolg-cap {
+  color: var(--txt-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+.toolg-pre {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--ground);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--txt-2);
+}
+.toolg-cmd {
+  color: var(--txt);
+}
+.toolg-cmd .pr {
+  color: var(--amber-2);
+}
+
+/* ---- pending manual approval (stands on its own so the user acts) ---- */
+.toolapp {
+  margin: 8px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-left: 2px solid var(--warn);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warn) 5%, transparent);
+}
+.toolapp-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+.toolapp-head .tt {
+  flex: 1;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toolapp-head .st {
+  font-size: 11px;
+  color: var(--warn);
+}
+.ta-note {
+  display: block;
+  color: var(--txt-3);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  margin: 10px 0;
+}
+.ta-btns {
+  display: flex;
+  gap: 10px;
+}
+.ta-ok {
+  background: var(--amber);
+  border: none;
+  color: var(--ground);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.ta-ok:hover {
+  background: var(--amber-2);
+}
+.ta-no {
+  background: none;
+  border: 1px solid var(--line-2);
+  color: var(--txt);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.ta-no:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.chat-error {
+  color: var(--danger);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  border: 1px solid rgba(226, 114, 111, 0.3);
+  background: rgba(226, 114, 111, 0.07);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.chat-composer {
+  border-top: 1px solid var(--line);
+  padding: 14px 20px;
+}
+.chat-cc {
+  max-width: 760px;
+  margin: 0 auto;
+}
