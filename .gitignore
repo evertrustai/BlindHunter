@@ -17,12 +17,6 @@ build/
 .blindhunter/
 ~/.blindhunter/
 
-# brand wordmark font — user-supplied (licensing); see apps/web/public/fonts/README.txt
-apps/web/public/fonts/*.otf
-apps/web/public/fonts/*.ttf
-apps/web/public/fonts/*.woff
-apps/web/public/fonts/*.woff2
-
 # logs
 *.log
 logs/

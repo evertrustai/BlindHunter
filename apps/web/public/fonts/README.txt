@@ -1,16 +1,14 @@
-Brand wordmark font (user-supplied)
-===================================
+Brand wordmark font
+===================
 
-The BlindHunter logo ("BLINDHUNTER") is rendered in a custom display font loaded
-via @font-face in apps/web/src/styles/global.css (family "Shlop", used through the
---font-logo token in tokens.css).
+The BlindHunter logo ("BLINDHUNTER") is rendered in the "Shlop" display font,
+loaded via @font-face in apps/web/src/styles/global.css (family "Shlop", used
+through the --font-logo token in tokens.css).
 
-The font file itself is NOT committed to the repo (font licenses generally don't
-permit redistribution). It is git-ignored. To enable the branded logo, drop a
-licensed font file into THIS folder named one of:
+Shlop.otf is committed here so the branded logo renders on every clone. If the
+file is missing, the logo falls back to IBM Plex Sans (still with the red "B"/"H").
 
-    Shlop.woff2   (preferred)   Shlop.otf   Shlop.ttf
-
-Until a file is present, the logo falls back to IBM Plex Sans (still with the red
-"B" and "H"). To use a different typeface, drop your file here and update the
-font-family name in global.css / tokens.css to match.
+Note: Shlop is a Typodermic font distributed under a desktop EULA. Confirm its
+license permits redistribution before publishing this repository publicly; if
+not, replace Shlop.otf with an open-licensed (e.g. OFL) display font and update
+the font-family name in global.css / tokens.css.
