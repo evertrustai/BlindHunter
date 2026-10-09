@@ -42,7 +42,6 @@ export function AboutPane() {
   return (
     <>
       <div className="ab-head">
-        <span className="ab-mark">◇</span>
         <div className="ab-word">
           <span className="hl">B</span>LIND<span className="hl">H</span>UNTER
         </div>

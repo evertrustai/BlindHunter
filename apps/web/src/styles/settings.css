@@ -654,18 +654,6 @@
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
 }
-.ab-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: var(--amber-soft);
-  border: 1px solid rgba(255, 68, 0, 0.4);
-  display: grid;
-  place-items: center;
-  color: var(--amber-2);
-  font-size: 14px;
-  flex: none;
-}
 .ab-word {
   font-family: var(--font-logo);
   font-weight: 400;
