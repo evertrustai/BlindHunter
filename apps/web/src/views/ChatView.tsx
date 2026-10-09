@@ -6,6 +6,7 @@ import { Attachments } from '../components/Attachments'
 import { SlashMenu } from '../components/SlashMenu'
 import { ProgressPanel } from '../components/ProgressPanel'
 import { Markdown } from '../components/Markdown'
+import { explainError } from '../lib/errors'
 import { useComposer } from '../hooks/useComposer'
 import { useSlashMenu } from '../hooks/useSlashMenu'
 import { useMentionMenu } from '../hooks/useMentionMenu'
@@ -165,6 +166,17 @@ const ToolApproval = memo(function ToolApproval({
           Reject
         </button>
       </div>
+    </div>
+  )
+})
+
+/** An error, shown as a plain-language explanation with the raw detail kept muted. */
+const ChatError = memo(function ChatError({ text }: { text: string }) {
+  const { title, detail } = explainError(text)
+  return (
+    <div className="chat-error">
+      <div className="ce-title">{title}</div>
+      {detail && <div className="ce-detail">{detail}</div>}
     </div>
   )
 })
@@ -548,11 +560,7 @@ export function ChatView({
                   </div>,
                 )
               } else {
-                nodes.push(
-                  <div className="chat-error" key={i}>
-                    {item.text}
-                  </div>,
-                )
+                nodes.push(<ChatError text={item.text} key={i} />)
               }
             })
             flush()

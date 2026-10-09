@@ -607,11 +607,23 @@
 .chat-error {
   color: var(--danger);
   font-size: 13px;
-  font-family: var(--font-mono);
   border: 1px solid rgba(226, 114, 111, 0.3);
   background: rgba(226, 114, 111, 0.07);
   border-radius: 8px;
   padding: 10px 12px;
+}
+.chat-error .ce-title {
+  line-height: 1.5;
+}
+.chat-error .ce-detail {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(226, 114, 111, 0.18);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  opacity: 0.7;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 .chat-composer {
   border-top: 1px solid var(--line);

@@ -130,7 +130,7 @@ export function Sidebar(props: SidebarProps) {
         </button>
         <button className="nav-item" onClick={() => onOpenSettings('general')}>
           <span className="ni-ico">⚙</span>
-          <span className="ni-label">Customize</span>
+          <span className="ni-label">Settings</span>
         </button>
       </nav>
 
