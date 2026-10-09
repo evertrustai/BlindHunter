@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { api, streamMessage, baseName } from '../lib/api'
-import type { ModelRef, Session, Usage } from '../lib/api'
+import { api, streamMessage, subscribeStream, baseName } from '../lib/api'
+import type { ModelRef, Session, Usage, AgentEvent } from '../lib/api'
 import { ComposerBar } from '../components/ComposerBar'
 import { Attachments } from '../components/Attachments'
 import { SlashMenu } from '../components/SlashMenu'
@@ -23,7 +23,7 @@ function fmtElapsed(ms: number): string {
 const CHAT_COMMANDS = SLASH_COMMANDS.filter((c) => c.id !== 'open-folder')
 
 type Item =
-  | { kind: 'user'; text: string }
+  | { kind: 'user'; text: string; images?: string[] }
   | { kind: 'assistant'; text: string }
   | { kind: 'tool'; id: string; name: string; args: string; result?: string; approval?: 'pending' | 'approved' | 'rejected' }
   | { kind: 'error'; text: string }
@@ -174,6 +174,7 @@ interface ChatViewProps {
   model: string
   models: ModelRef[]
   initialPrompt: string | null
+  initialImages?: string[]
   onConsumePrompt: () => void
   onUpdated?: () => void
   permission: string
@@ -192,6 +193,7 @@ export function ChatView({
   model,
   models,
   initialPrompt,
+  initialImages,
   onConsumePrompt,
   onUpdated,
   permission,
@@ -230,91 +232,122 @@ export function ChatView({
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  async function send(prompt: string) {
-    applyMentionTakeover(prompt)
-    setItems((prev) => [...prev, { kind: 'user', text: prompt }])
+  // Apply one streamed agent event to local state. Shared by the live send path
+  // and by reconnecting to an in-progress background run, so both render identically.
+  const handleEvent = useCallback((e: AgentEvent) => {
+    if (e.type === 'usage') {
+      setUsage({ prompt: e.prompt ?? 0, completion: e.completion ?? 0, total: e.total ?? 0, context: e.context ?? 0 })
+      return
+    }
+    if (e.type === 'plan') {
+      setPlan(e.steps ?? [])
+      return
+    }
+    if (e.type === 'tool_call' && e.name === 'bash') setCmdCount((n) => n + 1)
+    setItems((prev) => {
+      const next = prev.slice()
+      const last = next[next.length - 1]
+      switch (e.type) {
+        case 'user_message':
+          // Echoed by the server at the start of a turn — this (not an optimistic
+          // local add) is the single source of the user bubble, so reconnecting
+          // to a run rebuilds it too.
+          next.push({ kind: 'user', text: e.content ?? '', images: e.images })
+          break
+        case 'assistant_delta':
+          if (last?.kind === 'assistant') next[next.length - 1] = { ...last, text: last.text + (e.text ?? '') }
+          else next.push({ kind: 'assistant', text: e.text ?? '' })
+          break
+        case 'assistant_message':
+          if (last?.kind !== 'assistant') next.push({ kind: 'assistant', text: e.content ?? '' })
+          break
+        case 'assistant_retract':
+          // model emitted a tool call as text — drop that raw bubble
+          if (last?.kind === 'assistant') next.pop()
+          break
+        case 'tool_call':
+          next.push({ kind: 'tool', id: e.id ?? '', name: e.name ?? '', args: e.arguments ?? '' })
+          break
+        case 'approval_request':
+          next.push({ kind: 'tool', id: e.id ?? '', name: e.name ?? '', args: e.arguments ?? '', approval: 'pending' })
+          break
+        case 'tool_result':
+          for (let i = next.length - 1; i >= 0; i--) {
+            const it = next[i]
+            if (it.kind === 'tool' && it.id === e.id) {
+              next[i] = { ...it, result: e.result }
+              break
+            }
+          }
+          break
+        case 'error':
+          next.push({ kind: 'error', text: e.message ?? 'error' })
+          break
+      }
+      return next
+    })
+  }, [])
+
+  // Start the per-turn UI feedback (spinner, command counter, elapsed timer).
+  function beginTurn() {
     setStreaming(true)
     setCmdCount(0)
     setElapsedMs(0)
     turnStartRef.current = Date.now()
     if (timerRef.current) window.clearInterval(timerRef.current)
     timerRef.current = window.setInterval(() => setElapsedMs(Date.now() - turnStartRef.current), 1000)
+  }
+
+  function endTurn() {
+    setStreaming(false)
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    setElapsedMs(Date.now() - turnStartRef.current)
+    abortRef.current = null
+    onUpdated?.()
+  }
+
+  // Send a new message. The run executes on the server and survives this client
+  // disconnecting; the user bubble arrives via the echoed `user_message` event.
+  async function send(prompt: string, images?: string[]) {
+    applyMentionTakeover(prompt)
+    beginTurn()
     const ctrl = new AbortController()
     abortRef.current = ctrl
     try {
-      await streamMessage(
-        session.id,
-        prompt,
-        modelSel,
-        permission,
-        effort,
-        (e) => {
-        if (e.type === 'usage') {
-          setUsage({ prompt: e.prompt ?? 0, completion: e.completion ?? 0, total: e.total ?? 0, context: e.context ?? 0 })
-          return
-        }
-        if (e.type === 'plan') {
-          setPlan(e.steps ?? [])
-          return
-        }
-        if (e.type === 'tool_call' && e.name === 'bash') setCmdCount((n) => n + 1)
-        setItems((prev) => {
-          const next = prev.slice()
-          const last = next[next.length - 1]
-          switch (e.type) {
-            case 'assistant_delta':
-              if (last?.kind === 'assistant') next[next.length - 1] = { ...last, text: last.text + (e.text ?? '') }
-              else next.push({ kind: 'assistant', text: e.text ?? '' })
-              break
-            case 'assistant_message':
-              if (last?.kind !== 'assistant') next.push({ kind: 'assistant', text: e.content ?? '' })
-              break
-            case 'assistant_retract':
-              // model emitted a tool call as text — drop that raw bubble
-              if (last?.kind === 'assistant') next.pop()
-              break
-            case 'tool_call':
-              next.push({ kind: 'tool', id: e.id ?? '', name: e.name ?? '', args: e.arguments ?? '' })
-              break
-            case 'approval_request':
-              next.push({ kind: 'tool', id: e.id ?? '', name: e.name ?? '', args: e.arguments ?? '', approval: 'pending' })
-              break
-            case 'tool_result':
-              for (let i = next.length - 1; i >= 0; i--) {
-                const it = next[i]
-                if (it.kind === 'tool' && it.id === e.id) {
-                  next[i] = { ...it, result: e.result }
-                  break
-                }
-              }
-              break
-            case 'error':
-              next.push({ kind: 'error', text: e.message ?? 'error' })
-              break
-          }
-          return next
-        })
-        },
-        ctrl.signal,
-      )
+      await streamMessage(session.id, prompt, modelSel, permission, effort, handleEvent, ctrl.signal, images)
     } catch (err) {
-      // A user-initiated stop aborts the fetch — that isn't an error.
+      // Disconnecting (stop / unmount) aborts the fetch — that isn't an error.
       if (!ctrl.signal.aborted) {
         setItems((prev) => [...prev, { kind: 'error', text: err instanceof Error ? err.message : String(err) }])
       }
     } finally {
-      setStreaming(false)
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-      setElapsedMs(Date.now() - turnStartRef.current)
-      abortRef.current = null
-      onUpdated?.()
+      endTurn()
     }
   }
 
+  // Reconnect to a session's in-progress background run: replay buffered events,
+  // then stream live ones. Used when returning to a session whose run is active.
+  async function reconnect() {
+    beginTurn()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      await subscribeStream(session.id, handleEvent, ctrl.signal)
+    } catch (err) {
+      if (!ctrl.signal.aborted) {
+        setItems((prev) => [...prev, { kind: 'error', text: err instanceof Error ? err.message : String(err) }])
+      }
+    } finally {
+      endTurn()
+    }
+  }
+
+  // The Stop button: actually stop the server-side run (not just disconnect).
   function stop() {
+    void api.stopRun(session.id)
     abortRef.current?.abort()
   }
 
@@ -330,7 +363,9 @@ export function ChatView({
     [session.id],
   )
 
-  async function loadHistory() {
+  // Load the persisted (completed) transcript. Returns whether a run is still
+  // active on the server, so the caller can reconnect to it.
+  async function loadHistory(): Promise<boolean> {
     try {
       const full = await api.getSession(session.id)
       const its: Item[] = []
@@ -348,20 +383,29 @@ export function ChatView({
         }
       }
       setItems(its)
+      return Boolean(full.running)
     } catch {
-      /* ignore */
+      return false
     }
   }
 
-  // Fire the first prompt handed over from the console.
+  // On mount: fire the handed-over first prompt, or load history — and if a run
+  // is still going in the background, reconnect to it.
   useEffect(() => {
     if (started.current) return
     started.current = true
-    if (initialPrompt) {
-      void send(initialPrompt)
+    if (initialPrompt || (initialImages && initialImages.length)) {
+      void send(initialPrompt ?? '', initialImages)
       onConsumePrompt()
     } else {
-      void loadHistory()
+      void loadHistory().then((running) => {
+        if (running) void reconnect()
+      })
+    }
+    // On unmount (e.g. switching sessions) just disconnect from the stream — the
+    // run keeps going on the server; only the Stop button actually stops it.
+    return () => {
+      abortRef.current?.abort()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -373,9 +417,10 @@ export function ChatView({
   function submit() {
     if (streaming) return
     const msg = c.compose()
-    if (!msg) return
+    const imgs = c.imageUrls()
+    if (!msg && imgs.length === 0) return // allow sending images with no text
     c.reset()
-    void send(msg)
+    void send(msg, imgs.length ? imgs : undefined)
   }
 
   function runCommand(cmd: SlashCommand) {
@@ -483,7 +528,14 @@ export function ChatView({
                 nodes.push(
                   <div className="msg user" key={i}>
                     <div className="bubble">
-                      <p>{item.text}</p>
+                      {item.images && item.images.length > 0 && (
+                        <div className="msg-imgs">
+                          {item.images.map((src, k) => (
+                            <img key={k} src={src} alt="pasted" />
+                          ))}
+                        </div>
+                      )}
+                      {item.text && <p>{item.text}</p>}
                     </div>
                   </div>,
                 )
@@ -532,6 +584,7 @@ export function ChatView({
               placeholder={streaming ? 'Running…' : 'Reply…  (/ commands · @ agents)'}
               value={c.text}
               onChange={(e) => c.setText(e.target.value)}
+              onPaste={c.onPaste}
               onKeyDown={(e) => {
                 if (mention.handleKeyDown(e)) return
                 if (slash.handleKeyDown(e, runCommand)) return

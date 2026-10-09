@@ -325,6 +325,23 @@
 .msg .bubble p:last-child {
   margin-bottom: 0;
 }
+.msg-imgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.msg-imgs img {
+  max-width: 260px;
+  max-height: 220px;
+  width: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line-2);
+  display: block;
+}
+.msg-imgs:last-child {
+  margin-bottom: 0;
+}
 
 /* ---- rendered markdown in assistant messages ---- */
 .md {

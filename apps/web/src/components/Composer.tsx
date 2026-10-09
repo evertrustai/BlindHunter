@@ -17,7 +17,7 @@ interface ComposerProps {
   onSelectModel: (ref: string) => void
   workspace: string | null
   onSelectWorkspace: (path: string) => void
-  onSend: (prompt: string) => void
+  onSend: (prompt: string, images?: string[]) => void
   permission: string
   onPermission: (id: string) => void
   effort: string
@@ -57,8 +57,9 @@ export function Composer({
   function submit() {
     if (!canSend) return
     const msg = c.compose()
-    if (!msg) return
-    onSend(msg)
+    const imgs = c.imageUrls()
+    if (!msg && imgs.length === 0) return
+    onSend(msg, imgs.length ? imgs : undefined)
     c.reset()
   }
 
@@ -169,6 +170,7 @@ export function Composer({
           }
           value={c.text}
           onChange={(e) => c.setText(e.target.value)}
+          onPaste={c.onPaste}
           onKeyDown={(e) => {
             if (mention.handleKeyDown(e)) return
             if (slash.handleKeyDown(e, runCommand)) return

@@ -8,7 +8,7 @@ interface ConsoleViewProps {
   onSelectModel: (ref: string) => void
   workspace: string | null
   onSelectWorkspace: (path: string) => void
-  onSend: (prompt: string) => void
+  onSend: (prompt: string, images?: string[]) => void
   permission: string
   onPermission: (id: string) => void
   effort: string

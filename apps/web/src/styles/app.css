@@ -257,6 +257,21 @@
 .ws .dot.pinned {
   background: var(--amber-2);
 }
+/* A session whose agent is currently running — pulsing yellow (wins over pinned). */
+.ws .dot.running {
+  background: #ffc400;
+  box-shadow: 0 0 0 2px rgba(255, 196, 0, 0.22);
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
 .ws-kebab {
   flex: none;
   width: 26px;
@@ -1366,6 +1381,27 @@
   padding: 5px 6px 5px 10px;
   font-size: 12.5px;
   font-family: var(--font-mono);
+}
+.attach-chip.img {
+  padding: 4px;
+  position: relative;
+}
+.attach-chip.img img {
+  height: 44px;
+  width: auto;
+  max-width: 88px;
+  object-fit: cover;
+  border-radius: 5px;
+  display: block;
+}
+.attach-chip.img .attach-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  line-height: 1;
+  padding: 1px 4px;
 }
 .attach-x {
   background: none;

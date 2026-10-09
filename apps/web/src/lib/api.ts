@@ -49,6 +49,8 @@ export interface Session {
   groupId?: string | null
   agentId?: string | null
   messageCount?: number
+  /** True while an agent run is active on the server for this session. */
+  running?: boolean
 }
 
 export interface Agent {
@@ -130,6 +132,7 @@ export interface PlanStep {
 
 export interface AgentEvent {
   type:
+    | 'user_message'
     | 'assistant_delta'
     | 'tool_call'
     | 'approval_request'
@@ -140,8 +143,10 @@ export interface AgentEvent {
     | 'session_title'
     | 'plan'
     | 'done'
+    | 'end'
     | 'error'
   text?: string
+  images?: string[]
   id?: string
   name?: string
   arguments?: string
@@ -206,6 +211,9 @@ export const api = {
       json<Session>(r),
     ),
   deleteSession: (id: string) => fetch(`/api/sessions/${id}`, { method: 'DELETE' }).then((r) => json(r)),
+  /** Explicitly stop a session's background run (the Stop button). */
+  stopRun: (id: string) =>
+    fetch(`/api/sessions/${id}/stop`, { method: 'POST' }).then((r) => json<{ stopped: boolean }>(r)),
   getGroups: () => fetch('/api/groups').then((r) => json<Group[]>(r)),
   createGroup: (name: string) =>
     fetch('/api/groups', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ name }) }).then((r) =>
@@ -309,13 +317,33 @@ export async function streamMessage(
   effort: string,
   onEvent: (e: AgentEvent) => void,
   signal?: AbortSignal,
+  images?: string[],
 ): Promise<void> {
   const res = await fetch(`/api/sessions/${sessionId}/messages`, {
     method: 'POST',
     headers: jsonHeaders,
-    body: JSON.stringify({ content, model, permission, effort }),
+    body: JSON.stringify({ content, model, permission, effort, images }),
     signal,
   })
+  await readSSE(res, onEvent)
+}
+
+/**
+ * Reconnect to a session's in-progress background run: replays the buffered events
+ * so far, then streams live ones. Returns when the run ends or the fetch is aborted.
+ * Aborting this does NOT stop the run (use api.stopRun for that).
+ */
+export async function subscribeStream(
+  sessionId: string,
+  onEvent: (e: AgentEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch(`/api/sessions/${sessionId}/stream`, { signal })
+  await readSSE(res, onEvent)
+}
+
+/** Read a Server-Sent Events stream, dispatching each parsed `data:` event. */
+async function readSSE(res: Response, onEvent: (e: AgentEvent) => void): Promise<void> {
   if (!res.body) throw new Error('no response stream')
   const reader = res.body.getReader()
   const decoder = new TextDecoder()

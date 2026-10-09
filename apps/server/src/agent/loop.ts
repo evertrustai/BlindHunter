@@ -104,6 +104,8 @@ export interface RunOpts {
   cwd: string
   history: ChatMessage[]
   userMessage: string
+  /** Data-URL images pasted/attached with this turn, sent to the model as vision input. */
+  userImages?: string[]
   maxSteps?: number
   contextWindow?: number
   permission?: string
@@ -142,7 +144,17 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
     // Stored 'tool' messages are display-only records for the UI; they aren't paired
     // with tool_calls, so keep them out of the model's context to avoid API errors.
     ...opts.history.filter((m) => m.role !== 'tool'),
-    { role: 'user', content: opts.userMessage },
+    {
+      role: 'user',
+      // With pasted/attached images, send multimodal content (text + image_url) so a
+      // vision-capable model sees them; otherwise a plain text message.
+      content: opts.userImages?.length
+        ? [
+            ...(opts.userMessage ? [{ type: 'text' as const, text: opts.userMessage }] : []),
+            ...opts.userImages.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
+          ]
+        : opts.userMessage,
+    },
   ]
   // The root orchestrator gets more steps so it can spawn + coordinate many subagents.
   const maxSteps = opts.maxSteps ?? (canDelegate ? 24 : 12)

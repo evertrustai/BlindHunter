@@ -62,6 +62,7 @@ export function App() {
   const [workspace, setWorkspace] = useState<string | null>(() => loadLS('bh.workspace'))
   const [session, setSession] = useState<Session | null>(null)
   const [pending, setPending] = useState<string | null>(null)
+  const [pendingImages, setPendingImages] = useState<string[] | undefined>(undefined)
   const [sessions, setSessions] = useState<Session[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   // Permission is seeded from the Settings › Permissions default (below); the
@@ -129,6 +130,16 @@ export function App() {
       })
   }, [])
 
+  // Keep the sidebar's per-session run indicators (the yellow dot) fresh, so a run
+  // progressing or finishing in the background shows up even while viewing another
+  // session. Cheap local poll; `running` changes don't reorder the list.
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      api.getSessions().then(setSessions).catch(() => {})
+    }, 3000)
+    return () => window.clearInterval(t)
+  }, [])
+
   async function pinSession(s: Session, pinned: boolean) {
     await api.updateSession(s.id, { pinned })
     await loadSessions()
@@ -163,12 +174,13 @@ export function App() {
     await Promise.all([loadGroups(), loadSessions()])
   }
 
-  async function handleSend(prompt: string) {
+  async function handleSend(prompt: string, images?: string[]) {
     if (!workspace || !selectedModel) return
     // No title — the backend auto-names the session from the first prompt.
     const s = await api.createSession({ workspace, model: selectedModel })
     setSession(s)
     setPending(prompt)
+    setPendingImages(images)
     setView('chat')
     void loadSessions()
   }
@@ -276,7 +288,11 @@ export function App() {
             model={session.model || selectedModel || ''}
             models={models}
             initialPrompt={pending}
-            onConsumePrompt={() => setPending(null)}
+            initialImages={pendingImages}
+            onConsumePrompt={() => {
+              setPending(null)
+              setPendingImages(undefined)
+            }}
             onUpdated={loadSessions}
             permission={permission}
             onPermission={requestPermission}

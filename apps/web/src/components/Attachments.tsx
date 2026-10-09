@@ -5,14 +5,23 @@ export function Attachments({ items, onRemove }: { items: Attachment[]; onRemove
   if (items.length === 0) return null
   return (
     <div className="attach-row">
-      {items.map((a, i) => (
-        <span className="attach-chip" key={`${a.name}-${i}`}>
-          📎 {a.name}
-          <button className="attach-x" aria-label={`Remove ${a.name}`} onClick={() => onRemove(i)}>
-            ✕
-          </button>
-        </span>
-      ))}
+      {items.map((a, i) =>
+        a.kind === 'image' ? (
+          <span className="attach-chip img" key={`${a.name}-${i}`} title={a.name}>
+            <img src={a.dataUrl} alt={a.name} />
+            <button className="attach-x" aria-label={`Remove ${a.name}`} onClick={() => onRemove(i)}>
+              ✕
+            </button>
+          </span>
+        ) : (
+          <span className="attach-chip" key={`${a.name}-${i}`}>
+            📎 {a.name}
+            <button className="attach-x" aria-label={`Remove ${a.name}`} onClick={() => onRemove(i)}>
+              ✕
+            </button>
+          </span>
+        ),
+      )}
     </div>
   )
 }

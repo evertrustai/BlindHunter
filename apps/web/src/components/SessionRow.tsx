@@ -110,7 +110,10 @@ export function SessionRow({ session, groups, active, onOpen, onPin, onRename, o
       title={`${named ? session.title + '\n' : ''}${session.workspace}`}
     >
       <button className="ws-open" onClick={() => onOpen(session)}>
-        <span className={session.pinned ? 'dot pinned' : 'dot'} />
+        <span
+          className={`dot${session.pinned ? ' pinned' : ''}${session.running ? ' running' : ''}`}
+          title={session.running ? 'Agent is running' : undefined}
+        />
         <span className="ws-label">{label}</span>
       </button>
       <button

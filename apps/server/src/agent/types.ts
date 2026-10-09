@@ -12,9 +12,14 @@ export interface ExtraTool {
   run: (args: Record<string, unknown>) => Promise<string>
 }
 
+/** OpenAI-style multimodal content parts (text + images) for vision-capable models. */
+export type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
-  content: string
+  content: string | ContentPart[]
   tool_calls?: ToolCallRef[]
   tool_call_id?: string
   name?: string
@@ -22,6 +27,7 @@ export interface ChatMessage {
 
 /** Events streamed from the agent loop to the client over SSE. */
 export type AgentEvent =
+  | { type: 'user_message'; content: string; images?: string[] }
   | { type: 'assistant_delta'; text: string }
   | { type: 'tool_call'; id: string; name: string; arguments: string }
   | { type: 'approval_request'; id: string; name: string; arguments: string }
@@ -32,6 +38,7 @@ export type AgentEvent =
   | { type: 'session_title'; title: string }
   | { type: 'plan'; steps: PlanStep[] }
   | { type: 'done' }
+  | { type: 'end' }
   | { type: 'error'; message: string }
 
 export interface PlanStep {

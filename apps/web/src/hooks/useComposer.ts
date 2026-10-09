@@ -1,11 +1,26 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent } from 'react'
 
 export interface Attachment {
   name: string
-  content: string
+  kind: 'text' | 'image'
+  /** Text files/pastes. */
+  content?: string
+  /** Images: a data URL (data:image/png;base64,…) sent to the model as vision input. */
+  dataUrl?: string
 }
 
 const MAX_ATTACH_BYTES = 400_000
+/** Pasted/attached images, as a data URL — capped so the request stays reasonable. */
+const MAX_IMAGE_BYTES = 8_000_000
+
+function readAsDataURL(f: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result))
+    r.onerror = () => reject(new Error('read failed'))
+    r.readAsDataURL(f)
+  })
+}
 /** Matches the textarea's CSS max-height (chat.css) — beyond this it scrolls instead of growing. */
 const MAX_TEXTAREA_HEIGHT = 200
 
@@ -66,22 +81,55 @@ export function useComposer() {
     fileRef.current?.click()
   }
 
+  async function addImageFile(f: File, fallbackName?: string) {
+    if (f.size > MAX_IMAGE_BYTES) return
+    try {
+      const dataUrl = await readAsDataURL(f)
+      const ext = (f.type.split('/')[1] || 'png').replace('+xml', '')
+      const name = f.name && f.name !== 'image.png' ? f.name : fallbackName || `pasted-${Date.now()}.${ext}`
+      setAttachments((a) => [...a, { name, kind: 'image', dataUrl }])
+    } catch {
+      // unreadable — skip
+    }
+  }
+
   async function onFiles(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     for (const f of files) {
-      if (f.size > MAX_ATTACH_BYTES) continue
-      try {
-        const content = await f.text()
-        setAttachments((a) => [...a, { name: f.name, content }])
-      } catch {
-        // binary / unreadable — skip
+      if (f.type.startsWith('image/')) {
+        await addImageFile(f)
+      } else {
+        if (f.size > MAX_ATTACH_BYTES) continue
+        try {
+          const content = await f.text()
+          setAttachments((a) => [...a, { name: f.name, kind: 'text', content }])
+        } catch {
+          // binary / unreadable — skip
+        }
       }
     }
     e.target.value = ''
   }
 
+  /** Paste images/screenshots from the clipboard; text paste falls through to default. */
+  async function onPaste(e: ClipboardEvent) {
+    const items = Array.from(e.clipboardData?.items ?? [])
+    const imageItems = items.filter((it) => it.kind === 'file' && it.type.startsWith('image/'))
+    if (imageItems.length === 0) return // plain text — let the textarea handle it
+    e.preventDefault()
+    for (const it of imageItems) {
+      const f = it.getAsFile()
+      if (f) await addImageFile(f)
+    }
+  }
+
   function removeAttachment(i: number) {
     setAttachments((a) => a.filter((_, j) => j !== i))
+  }
+
+  /** Data URLs of attached images, for sending to the model as vision input. */
+  function imageUrls(): string[] {
+    return attachments.filter((a) => a.kind === 'image' && a.dataUrl).map((a) => a.dataUrl as string)
   }
 
   function toggleMic() {
@@ -163,11 +211,11 @@ export function useComposer() {
     rec.start()
   }
 
-  /** Build the final message (attachments + text), then a caller resets. */
+  /** Build the final message (text attachments + text). Images go separately via imageUrls(). */
   function compose(): string {
-    const parts: string[] = attachments.map(
-      (a) => `Attached file: ${a.name}\n\`\`\`\n${a.content.slice(0, 20000)}\n\`\`\``,
-    )
+    const parts: string[] = attachments
+      .filter((a) => a.kind === 'text' && a.content)
+      .map((a) => `Attached file: ${a.name}\n\`\`\`\n${(a.content ?? '').slice(0, 20000)}\n\`\`\``)
     const t = text.trim()
     if (t) parts.push(t)
     return parts.join('\n\n')
@@ -190,6 +238,8 @@ export function useComposer() {
     fileRef,
     textareaRef,
     onFiles,
+    onPaste,
+    imageUrls,
     listening,
     toggleMic,
     compose,

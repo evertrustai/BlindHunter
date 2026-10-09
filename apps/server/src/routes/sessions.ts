@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { runAgent } from '../agent/loop.js'
 import { generateTitle } from '../agent/title.js'
 import { resolveApproval } from '../agent/approvals.js'
@@ -21,7 +21,8 @@ import { resolveShellKind } from '../tools/shell.js'
 import { findByName, getAgent, listSubagents } from '../agents/store.js'
 import { setSessionAgent } from '../sessions/store.js'
 import { mcpExtraTools } from '../mcp/manager.js'
-import type { ChatMessage } from '../agent/types.js'
+import { startRun, subscribe, stopRun, isRunning } from '../agent/runs.js'
+import type { ChatMessage, AgentEvent } from '../agent/types.js'
 
 /** First @mention of a known top-level agent in a message, e.g. "@recon". */
 function detectMention(text: string): string | null {
@@ -29,17 +30,60 @@ function detectMention(text: string): string | null {
   return m ? m[1] : null
 }
 
+/**
+ * Stream a session's background run to one client over SSE: replays buffered events
+ * then streams live. The client disconnecting only unsubscribes — it never stops the
+ * run. If there's no active run, sends a terminal event and closes.
+ */
+function streamRunToClient(sessionId: string, req: FastifyRequest, reply: FastifyReply): void {
+  reply.hijack()
+  const raw = reply.raw
+  raw.writeHead(200, {
+    'content-type': 'text/event-stream',
+    'cache-control': 'no-cache',
+    connection: 'keep-alive',
+  })
+  const send = (e: unknown) => {
+    try {
+      raw.write(`data: ${JSON.stringify(e)}\n\n`)
+    } catch {
+      /* client gone */
+    }
+  }
+  const unsub = subscribe(sessionId, (ev) => {
+    send(ev)
+    if (ev.type === 'end') {
+      try {
+        raw.end()
+      } catch {
+        /* already closed */
+      }
+    }
+  })
+  if (!unsub) {
+    send({ type: 'end' })
+    try {
+      raw.end()
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  req.raw.on('close', () => unsub())
+}
+
 export async function sessionRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/sessions', async (req) => createSession(req.body as Record<string, unknown>))
-  app.get('/api/sessions', async () => listSessions())
+  app.get('/api/sessions', async () => listSessions().map((s) => ({ ...s, running: isRunning(s.id) })))
 
   app.get('/api/sessions/:id', async (req, reply) => {
-    const session = getSession((req.params as { id: string }).id)
+    const { id } = req.params as { id: string }
+    const session = getSession(id)
     if (!session) {
       reply.code(404)
       return { error: 'session not found' }
     }
-    return session
+    return { ...session, running: isRunning(id) }
   })
 
   // Rename / pin / move-to-group.
@@ -88,12 +132,17 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
   // Send a message; responds with a Server-Sent Events stream of agent events.
   app.post('/api/sessions/:id/messages', async (req, reply) => {
     const { id } = req.params as { id: string }
-    const { content, model, permission, effort } = req.body as {
+    const { content, model, permission, effort, images } = req.body as {
       content: string
       model?: string
       permission?: string
       effort?: string
+      images?: string[]
     }
+    // Only accept data-URL images (pasted screenshots etc.), capped in count.
+    const userImages = (Array.isArray(images) ? images : [])
+      .filter((u) => typeof u === 'string' && u.startsWith('data:image/'))
+      .slice(0, 8)
     const session = getSession(id)
     if (!session) {
       reply.code(404)
@@ -134,18 +183,6 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       systemPrompt: s.systemPrompt,
     }))
 
-    reply.hijack()
-    const raw = reply.raw
-    raw.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
-    })
-    const send = (e: unknown) => raw.write(`data: ${JSON.stringify(e)}\n\n`)
-
-    const abort = new AbortController()
-    req.raw.on('close', () => abort.abort())
-
     // Name the session from the first prompt (LLM summary, heuristic fallback).
     const wantTitle = session.messages.length === 0 && isUnnamed(session)
 
@@ -154,26 +191,60 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     // Correlate a tool call's args (from tool_call/approval_request) with its result,
     // so the run's tool activity survives a reload and re-renders in the transcript.
     const toolMeta = new Map<string, { name: string; args: string }>()
-    try {
-      for await (const ev of runAgent({
-        baseUrl: provider.baseUrl,
-        apiKey: creds[providerId],
-        headers: provider.headers,
-        model: modelId,
-        cwd: session.workspace,
-        history: session.messages,
-        userMessage: String(content),
-        contextWindow,
-        permission: effectivePermission,
-        effort,
-        shell: resolveShellKind(settings.agentEnvironment, settings.terminalShell),
-        disabledTools: settings.disabledTools,
-        persona,
-        subagents,
-        extraTools: mcpExtraTools(),
-        signal: abort.signal,
-      })) {
-        send(ev)
+
+    const runOpts = {
+      baseUrl: provider.baseUrl,
+      apiKey: creds[providerId],
+      headers: provider.headers,
+      model: modelId,
+      cwd: session.workspace,
+      history: session.messages,
+      userMessage: String(content),
+      userImages,
+      contextWindow,
+      permission: effectivePermission,
+      effort,
+      shell: resolveShellKind(settings.agentEnvironment, settings.terminalShell),
+      disabledTools: settings.disabledTools,
+      persona,
+      subagents,
+      extraTools: mcpExtraTools(),
+    }
+
+    // The run's event source: echo the user message (so a client reconnecting
+    // mid-run rebuilds the bubble), run the agent, then (first turn) title it.
+    const make = (signal: AbortSignal): AsyncGenerator<AgentEvent> =>
+      (async function* () {
+        const echo: AgentEvent = {
+          type: 'user_message',
+          content: String(content),
+          ...(userImages.length ? { images: userImages } : {}),
+        }
+        yield echo
+        yield* runAgent({ ...runOpts, signal })
+        if (wantTitle) {
+          const title = await Promise.race<string>([
+            generateTitle({
+              baseUrl: provider.baseUrl,
+              apiKey: creds[providerId],
+              headers: provider.headers,
+              model: modelId,
+              firstMessage: String(content),
+              signal,
+            }).catch(() => ''),
+            new Promise<string>((resolve) => setTimeout(() => resolve(''), 8000)),
+          ])
+          if (title) {
+            setTitle(id, title)
+            yield { type: 'session_title', title }
+          }
+        }
+      })()
+
+    // Start the run in the BACKGROUND — it runs to completion even if this client
+    // disconnects (navigates to another session, closes the tab, etc.).
+    startRun(id, make, {
+      onEvent: (ev) => {
         if (ev.type === 'assistant_message') {
           toStore.push({ role: 'assistant', content: ev.content })
         } else if (ev.type === 'tool_call' || ev.type === 'approval_request') {
@@ -186,33 +257,24 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
             content: JSON.stringify({ name: meta.name || ev.name, args: meta.args, result: ev.result }),
           })
         }
-      }
-    } catch (e) {
-      send({ type: 'error', message: e instanceof Error ? e.message : String(e) })
-    }
+      },
+      onComplete: () => addMessages(id, toStore),
+    })
 
-    // Ask the model for a concise title (capped so a slow model can't hang the turn).
-    if (wantTitle) {
-      const title = await Promise.race<string>([
-        generateTitle({
-          baseUrl: provider.baseUrl,
-          apiKey: creds[providerId],
-          headers: provider.headers,
-          model: modelId,
-          firstMessage: String(content),
-          signal: abort.signal,
-        }).catch(() => ''),
-        new Promise<string>((resolve) => setTimeout(() => resolve(''), 8000)),
-      ])
-      if (title) {
-        setTitle(id, title)
-        send({ type: 'session_title', title })
-      }
-    }
-
-    addMessages(id, toStore) // falls back to a heuristic title if none was set
-    raw.end()
+    // Stream this run to the current client. Disconnecting unsubscribes but does
+    // NOT stop the run (that's POST /stop, driven by the Stop button).
+    streamRunToClient(id, req, reply)
   })
+
+  // Reconnect to a session's in-progress run (replays buffered events, then live).
+  app.get('/api/sessions/:id/stream', async (req, reply) => {
+    streamRunToClient((req.params as { id: string }).id, req, reply)
+  })
+
+  // Explicitly stop a running session (the Stop button).
+  app.post('/api/sessions/:id/stop', async (req) => ({
+    stopped: stopRun((req.params as { id: string }).id),
+  }))
 
   // Resolve a pending Manual-mode approval.
   app.post('/api/sessions/:id/approve', async (req) => {
