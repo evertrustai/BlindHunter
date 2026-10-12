@@ -168,6 +168,14 @@ export function updateSession(
   return session
 }
 
+/** Persist the model a session is using, so reopening keeps the user's choice. (QA-18) */
+export function setSessionModel(id: string, model: string): void {
+  const session = sessions.get(id)
+  if (!session || !model || session.model === model) return
+  session.model = model
+  persist(session)
+}
+
 /** Set the active agent on a session (from an @mention) without bumping updatedAt. */
 export function setSessionAgent(id: string, agentId: string | null): void {
   const session = sessions.get(id)

@@ -80,6 +80,8 @@ export interface AppSettings {
   experimental: boolean
   browserInsecureCerts?: boolean
   disabledTools: string[]
+  /** Max tool-call rounds the agent runs for one task before stopping itself. */
+  maxSteps?: number
   defaultModel?: string
 }
 
@@ -344,6 +346,19 @@ export async function subscribeStream(
 
 /** Read a Server-Sent Events stream, dispatching each parsed `data:` event. */
 async function readSSE(res: Response, onEvent: (e: AgentEvent) => void): Promise<void> {
+  // A non-2xx response isn't an SSE stream — it's an error (413 too large, 400, 5xx…).
+  // Surface it so the chat shows a real error instead of silently completing. (QA-03)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    let msg = text
+    try {
+      const j = JSON.parse(text) as { error?: string; message?: string }
+      msg = j.error ?? j.message ?? text
+    } catch {
+      /* non-JSON body — keep the raw text */
+    }
+    throw new Error(`${res.status}${msg ? ` ${msg.slice(0, 300)}` : ''}`.trim())
+  }
   if (!res.body) throw new Error('no response stream')
   const reader = res.body.getReader()
   const decoder = new TextDecoder()

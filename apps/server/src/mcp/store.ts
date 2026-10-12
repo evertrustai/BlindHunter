@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs'
+import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { MCP_FILE } from '../config/paths.js'
 
@@ -23,6 +24,8 @@ const servers = new Map<string, McpServerConfig>()
 function persist(): void {
   void (async () => {
     try {
+      // Create the state dir on a fresh install so first-run MCP config isn't lost. (QA-24)
+      await fs.mkdir(path.dirname(MCP_FILE), { recursive: true })
       await fs.writeFile(MCP_FILE, JSON.stringify([...servers.values()], null, 2), 'utf8')
     } catch {
       /* best effort */

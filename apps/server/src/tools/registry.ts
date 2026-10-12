@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { realpathSync } from 'node:fs'
 import { mkdir, writeFile as fsWriteFile } from 'node:fs/promises'
 import type { ToolSchema } from '../providers/openai.js'
 import * as fsTools from './fs.js'
@@ -7,12 +8,31 @@ import { HOME } from '../config/paths.js'
 import { runShell, type ShellKind } from './shell.js'
 
 /**
+ * Resolve a path to its real location, following symlinks. For a path that doesn't
+ * exist yet (e.g. a file about to be written), resolve the nearest existing ancestor
+ * and re-append the remaining segments — so a symlink anywhere on the path is honored.
+ */
+function canonicalize(abs: string): string {
+  try {
+    return realpathSync(abs)
+  } catch {
+    const parent = path.dirname(abs)
+    if (parent === abs) return abs
+    return path.join(canonicalize(parent), path.basename(abs))
+  }
+}
+
+/**
  * The agent's file tools must never read or write BlindHunter's own config directory
  * (~/.blindhunter/ holds credentials.yaml, settings, and session transcripts). A
  * malicious model/provider otherwise reads stored API keys straight into its context.
+ * Both the target and HOME are canonicalized so a workspace symlink pointing into the
+ * config dir can't slip past a plain string check. (QA-12)
  */
 function assertOutsideConfig(p: string): void {
-  const rel = path.relative(HOME, path.resolve(p))
+  const home = canonicalize(path.resolve(HOME))
+  const target = canonicalize(path.resolve(p))
+  const rel = path.relative(home, target)
   if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) {
     throw new Error('access denied: the BlindHunter config directory is off-limits to tools')
   }
@@ -170,6 +190,7 @@ export async function executeTool(
   args: Record<string, unknown>,
   cwd: string,
   shell?: ShellKind,
+  signal?: AbortSignal,
 ): Promise<string> {
   const resolvePath = (p: unknown): string => {
     const s = String(p ?? '')
@@ -178,7 +199,7 @@ export async function executeTool(
 
   switch (name) {
     case 'bash': {
-      const r = await runShell(String(args.command ?? ''), cwd, shell)
+      const r = await runShell(String(args.command ?? ''), cwd, shell, signal)
       const body = `exit ${r.code}\n${r.stdout}${r.stderr ? `\n[stderr]\n${r.stderr}` : ''}`
       return body.slice(0, MAX_OUTPUT)
     }

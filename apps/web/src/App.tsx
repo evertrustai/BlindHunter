@@ -81,8 +81,17 @@ export function App() {
     try {
       const m = await api.getModels()
       setModels(m)
-      // Keep the persisted/current model if it still exists, else pick the first.
-      setSelectedModel((cur) => (cur && m.some((x) => x.ref === cur) ? cur : (m[0]?.ref ?? null)))
+      // Precedence: the current/persisted selection if still valid, else the configured
+      // default model, else the first available model. (QA-19)
+      const configuredDefault = await api
+        .getSettings()
+        .then((s) => s.defaultModel)
+        .catch(() => undefined)
+      setSelectedModel((cur) => {
+        if (cur && m.some((x) => x.ref === cur)) return cur
+        if (configuredDefault && m.some((x) => x.ref === configuredDefault)) return configuredDefault
+        return m[0]?.ref ?? null
+      })
     } catch {
       // server not up yet
     }

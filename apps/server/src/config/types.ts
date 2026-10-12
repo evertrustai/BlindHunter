@@ -39,6 +39,12 @@ export interface Settings {
   browserInsecureCerts?: boolean
   /** Names of built-in tools the agent is NOT allowed to use. */
   disabledTools: string[]
+  /**
+   * Max think→act→observe rounds the top-level agent may run for one task before it
+   * stops itself — a runaway guard, not a target. The model normally finishes well
+   * before this; raise it for very long autonomous hunts. Default 120.
+   */
+  maxSteps?: number
   /** "providerId/modelId" */
   defaultModel?: string
   providers: Provider[]

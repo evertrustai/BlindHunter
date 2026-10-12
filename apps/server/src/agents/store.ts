@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs'
+import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { AGENTS_FILE } from '../config/paths.js'
 import { DEFAULT_PERSONA } from '../agent/prompt.js'
@@ -42,6 +43,9 @@ export function slugify(name: string): string {
 function persist(): void {
   void (async () => {
     try {
+      // Ensure the state dir exists — on a fresh install nothing has created it yet,
+      // so a first-run agent would otherwise be lost at restart. (QA-24)
+      await fs.mkdir(path.dirname(AGENTS_FILE), { recursive: true })
       // Only user-created agents are persisted; the built-in is seeded in memory.
       const arr = [...agents.values()].filter((a) => !a.builtin)
       await fs.writeFile(AGENTS_FILE, JSON.stringify(arr, null, 2), 'utf8')

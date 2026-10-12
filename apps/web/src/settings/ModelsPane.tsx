@@ -53,7 +53,7 @@ export function ModelsPane() {
   const [protocol, setProtocol] = useState('openai-chat')
   const [defaultContext, setDefaultContext] = useState('')
   const [apiKey, setApiKey] = useState('')
-  const [models, setModels] = useState<{ id: string; name: string }[]>([{ id: '', name: '' }])
+  const [models, setModels] = useState<{ id: string; name: string; contextWindow?: number }[]>([{ id: '', name: '' }])
   const [headers, setHeaders] = useState<{ name: string; value: string }[]>([{ name: '', value: '' }])
   const [editing, setEditing] = useState(false)
   const [fetched, setFetched] = useState<{ id: string; grade?: string; vision?: boolean }[]>([])
@@ -147,7 +147,14 @@ export function ModelsPane() {
         protocol,
         defaultContext: parseCtx(defaultContext),
         enabled: true,
-        models: models.filter((m) => m.id.trim()).map((m) => ({ id: m.id.trim(), name: m.name.trim() || m.id.trim() })),
+        // Preserve each model's exact contextWindow through the edit/save round trip. (QA-22)
+        models: models
+          .filter((m) => m.id.trim())
+          .map((m) => ({
+            id: m.id.trim(),
+            name: m.name.trim() || m.id.trim(),
+            ...(m.contextWindow != null ? { contextWindow: m.contextWindow } : {}),
+          })),
         headers: Object.keys(headerObj).length ? headerObj : undefined,
         apiKey: apiKey.trim() || undefined,
       })
@@ -169,9 +176,15 @@ export function ModelsPane() {
     setDisplayName(p.displayName)
     setBaseUrl(p.baseUrl)
     setProtocol(p.protocol)
-    setDefaultContext(p.defaultContext ? fmtCtx(p.defaultContext) : '')
+    // Show the exact number, not the lossy K/M abbreviation, so saving doesn't drift
+    // the value (e.g. 262144 → "262K" → 262000). (QA-22)
+    setDefaultContext(p.defaultContext ? String(p.defaultContext) : '')
     setApiKey('')
-    setModels(p.models.length ? p.models.map((m) => ({ id: m.id, name: m.name ?? m.id })) : [{ id: '', name: '' }])
+    setModels(
+      p.models.length
+        ? p.models.map((m) => ({ id: m.id, name: m.name ?? m.id, contextWindow: m.contextWindow }))
+        : [{ id: '', name: '' }],
+    )
     setHeaders(
       p.headers && Object.keys(p.headers).length
         ? Object.entries(p.headers).map(([name, value]) => ({ name, value }))

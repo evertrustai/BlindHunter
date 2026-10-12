@@ -33,7 +33,12 @@ function gitBashPath(): string {
 
 function pickShell(kind?: ShellKind): { cmd: string; args: (command: string) => string[] } {
   const isWin = process.platform === 'win32'
-  const resolved: ShellKind = kind ?? (isWin ? 'pwsh' : 'bash')
+  let resolved: ShellKind = kind ?? (isWin ? 'pwsh' : 'bash')
+  // On a non-Windows host the Windows-only shells aren't available. Fall back to bash
+  // so a fresh Linux/Kali install runs commands even with the default Windows settings. (QA-28)
+  if (!isWin && (resolved === 'pwsh' || resolved === 'cmd' || resolved === 'gitbash' || resolved === 'wsl')) {
+    resolved = 'bash'
+  }
   switch (resolved) {
     case 'pwsh':
       return { cmd: isWin ? 'powershell.exe' : 'pwsh', args: (c) => ['-NoProfile', '-Command', c] }
@@ -50,16 +55,72 @@ function pickShell(kind?: ShellKind): { cmd: string; args: (command: string) => 
   }
 }
 
-/** Run a shell command in a working directory. Never rejects — errors come back as code 1. */
-export function runShell(command: string, cwd: string, kind?: ShellKind): Promise<ShellResult> {
+/** Cap accumulated stdout/stderr so a noisy command can't exhaust memory. (QA-32) */
+const MAX_SHELL_OUTPUT = 200_000
+
+/**
+ * Run a shell command in a working directory. Never rejects — errors come back as code 1.
+ * If `signal` aborts (the user pressed Stop), the whole child process tree is killed and
+ * the command returns promptly with code 130. (QA-05)
+ */
+export function runShell(command: string, cwd: string, kind?: ShellKind, signal?: AbortSignal): Promise<ShellResult> {
   return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve({ stdout: '', stderr: '[cancelled]', code: 130 })
+      return
+    }
     const shell = pickShell(kind)
-    const child = spawn(shell.cmd, shell.args(command), { cwd, env: process.env })
+    // Give the child its own process group on POSIX so we can kill the whole tree.
+    const detached = process.platform !== 'win32'
+    const child = spawn(shell.cmd, shell.args(command), { cwd, env: process.env, detached })
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', (d: Buffer) => (stdout += d.toString()))
-    child.stderr.on('data', (d: Buffer) => (stderr += d.toString()))
-    child.on('close', (code) => resolve({ stdout, stderr, code: code ?? 0 }))
-    child.on('error', (err) => resolve({ stdout, stderr: String(err), code: 1 }))
+    let killed = false
+    const append = (cur: string, d: Buffer) =>
+      cur.length >= MAX_SHELL_OUTPUT ? cur : (cur + d.toString()).slice(0, MAX_SHELL_OUTPUT)
+    child.stdout.on('data', (d: Buffer) => (stdout = append(stdout, d)))
+    child.stderr.on('data', (d: Buffer) => (stderr = append(stderr, d)))
+
+    const killTree = () => {
+      killed = true
+      const pid = child.pid
+      if (pid == null) return
+      if (process.platform === 'win32') {
+        // Kill the process and all its children (shells spawn child commands).
+        try {
+          spawn('taskkill', ['/pid', String(pid), '/T', '/F'])
+        } catch {
+          try {
+            child.kill()
+          } catch {
+            /* already gone */
+          }
+        }
+      } else {
+        try {
+          process.kill(-pid, 'SIGKILL') // negative pid = the whole process group
+        } catch {
+          try {
+            child.kill('SIGKILL')
+          } catch {
+            /* already gone */
+          }
+        }
+      }
+    }
+    const onAbort = () => killTree()
+    signal?.addEventListener('abort', onAbort, { once: true })
+    const finish = (res: ShellResult) => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve(res)
+    }
+    child.on('close', (code) =>
+      finish({
+        stdout,
+        stderr: killed ? `${stderr}${stderr ? '\n' : ''}[cancelled by user]` : stderr,
+        code: killed ? 130 : (code ?? 0),
+      }),
+    )
+    child.on('error', (err) => finish({ stdout, stderr: String(err), code: 1 }))
   })
 }

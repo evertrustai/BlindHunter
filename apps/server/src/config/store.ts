@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: Settings = {
   logLevel: 'info',
   experimental: false,
   disabledTools: [],
+  maxSteps: 120,
   defaultModel: undefined,
   providers: [],
 }
@@ -33,6 +34,23 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings): Promise<void> {
   await ensureHome()
   await fs.writeFile(SETTINGS_FILE, stringify(settings), 'utf8')
+}
+
+// Serialize read-modify-write of settings. Independent routes (settings PATCH,
+// provider add/delete) all edit the one settings file; without a lock, two
+// concurrent load→modify→save cycles lose one another's change. (QA-15)
+let settingsLock: Promise<unknown> = Promise.resolve()
+
+export async function updateSettings(mutate: (current: Settings) => Settings): Promise<Settings> {
+  const run = settingsLock.then(async () => {
+    const current = await loadSettings()
+    const next = mutate({ ...current })
+    await saveSettings(next)
+    return next
+  })
+  // Keep the chain alive even if one update throws.
+  settingsLock = run.catch(() => undefined)
+  return run
 }
 
 export async function loadCredentials(): Promise<Credentials> {

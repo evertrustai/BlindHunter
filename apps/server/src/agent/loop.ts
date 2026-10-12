@@ -156,8 +156,11 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
         : opts.userMessage,
     },
   ]
-  // The root orchestrator gets more steps so it can spawn + coordinate many subagents.
-  const maxSteps = opts.maxSteps ?? (canDelegate ? 24 : 12)
+  // The step budget is a runaway guard, not a target — the model stops on its own when
+  // the task is done. It's set high (and configurable) so long autonomous hunts run to
+  // completion instead of being cut off after a few minutes. The root orchestrator gets
+  // the most so it can spawn + coordinate many subagents.
+  const maxSteps = opts.maxSteps ?? (canDelegate ? 120 : 60)
   const disabled = new Set(opts.disabledTools ?? [])
   const extraTools = opts.extraTools ?? []
   const extraRun = new Map(extraTools.map((t) => [t.schema.function.name, t.run]))
@@ -177,6 +180,7 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
 
   for (let step = 0; step < maxSteps; step++) {
     let content = ''
+    let finishReason: string | undefined
     let usage: { prompt: number; completion: number; total: number } | undefined
     const acc = new Map<number, { id: string; name: string; args: string }>()
 
@@ -192,6 +196,7 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
         signal: opts.signal,
       })) {
         if (d.usage) usage = d.usage
+        if (d.finish) finishReason = d.finish
         if (d.content) {
           content += d.content
           yield { type: 'assistant_delta', text: d.content }
@@ -207,6 +212,8 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
         }
       }
     } catch (err) {
+      // A user stop aborts the stream mid-flight — that's expected, not an error. (QA-05)
+      if (opts.signal?.aborted) return
       yield { type: 'error', message: err instanceof Error ? err.message : String(err) }
       return
     }
@@ -249,6 +256,13 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
     if (assistantText) yield { type: 'assistant_message', content: assistantText }
 
     if (!toolRefs.length) {
+      // Don't present a truncated answer as if it were complete. (QA-02)
+      if (finishReason === 'length') {
+        yield {
+          type: 'assistant_message',
+          content: '_Note: the model stopped at its output token limit, so this answer may be cut off._',
+        }
+      }
       yield { type: 'done' }
       return
     }
@@ -265,6 +279,17 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
         const steps = parsePlanSteps(planArgs)
         yield { type: 'plan', steps }
         messages.push({ role: 'tool', tool_call_id: ref.id, name: 'update_plan', content: `Plan updated: ${steps.length} steps.` })
+        continue
+      }
+      // Stop promptly once the user cancels, rather than running the rest. (QA-05)
+      if (opts.signal?.aborted) break
+      // Enforce the disabled-tools list at EXECUTION time, even for a tool the model
+      // invented or that was recovered from inline text (advertising isn't enough). (QA-11)
+      if (disabled.has(ref.function.name)) {
+        yield { type: 'tool_call', id: ref.id, name: ref.function.name, arguments: ref.function.arguments }
+        const msg = `(tool "${ref.function.name}" is disabled in settings — not executed)`
+        yield { type: 'tool_result', id: ref.id, name: ref.function.name, result: msg }
+        messages.push({ role: 'tool', tool_call_id: ref.id, name: ref.function.name, content: msg })
         continue
       }
       const isExtra = extraRun.has(ref.function.name)
@@ -298,7 +323,7 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
         }
       } else {
         try {
-          result = await executeTool(ref.function.name, parsed, opts.cwd, opts.shell)
+          result = await executeTool(ref.function.name, parsed, opts.cwd, opts.shell, opts.signal)
         } catch (e) {
           result = `error: ${e instanceof Error ? e.message : String(e)}`
         }
@@ -306,8 +331,15 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
       yield { type: 'tool_result', id: ref.id, name: ref.function.name, result }
       messages.push({ role: 'tool', tool_call_id: ref.id, name: ref.function.name, content: result })
     }
+    if (opts.signal?.aborted) return
   }
 
+  // Fell through the whole step budget without the model finishing — say so, so an
+  // unfinished task isn't mistaken for a completed one. (QA-01)
+  yield {
+    type: 'assistant_message',
+    content: `_Reached the step limit for this turn (${maxSteps} steps), so the task may be unfinished. Send “continue” to keep going._`,
+  }
   yield { type: 'done' }
 }
 
@@ -339,7 +371,7 @@ async function* runSubagent(
     canDelegate: false, // one level deep — a subagent can't spawn subagents
     history: [],
     userMessage: task,
-    maxSteps: 8,
+    maxSteps: 40,
   })) {
     if (ev.type === 'assistant_message') {
       report += (report ? '\n' : '') + ev.content

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { loadSettings, saveSettings, loadCredentials, saveCredentials } from '../config/store.js'
+import { loadSettings, updateSettings, loadCredentials, saveCredentials } from '../config/store.js'
 import type { Provider } from '../config/types.js'
 
 export async function providerRoutes(app: FastifyInstance): Promise<void> {
@@ -11,11 +11,12 @@ export async function providerRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/api/providers', async (req) => {
     const { apiKey, ...provider } = req.body as Provider & { apiKey?: string }
-    const settings = await loadSettings()
-    const idx = settings.providers.findIndex((p) => p.id === provider.id)
-    if (idx >= 0) settings.providers[idx] = provider
-    else settings.providers.push(provider)
-    await saveSettings(settings)
+    await updateSettings((s) => {
+      const idx = s.providers.findIndex((p) => p.id === provider.id)
+      if (idx >= 0) s.providers[idx] = provider
+      else s.providers.push(provider)
+      return s
+    })
     if (apiKey) {
       const creds = await loadCredentials()
       creds[provider.id] = apiKey
@@ -70,9 +71,10 @@ export async function providerRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete('/api/providers/:id', async (req) => {
     const { id } = req.params as { id: string }
-    const settings = await loadSettings()
-    settings.providers = settings.providers.filter((p) => p.id !== id)
-    await saveSettings(settings)
+    await updateSettings((s) => {
+      s.providers = s.providers.filter((p) => p.id !== id)
+      return s
+    })
     const creds = await loadCredentials()
     delete creds[id]
     await saveCredentials(creds)

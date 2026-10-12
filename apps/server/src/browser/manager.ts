@@ -283,17 +283,11 @@ export function currentUrl(id?: string): string {
   return get(id).page.url()
 }
 
-/** Close the whole browser (on shutdown). */
+/** Close the whole browser (on shutdown). Called by the coordinated handler in index.ts. */
 export async function shutdown(): Promise<void> {
   await browser?.close().catch(() => {})
   browser = null
   context = null
   tabs.clear()
   activeId = null
-}
-
-for (const sig of ['SIGINT', 'SIGTERM', 'beforeExit'] as const) {
-  process.once(sig, () => {
-    void shutdown()
-  })
 }

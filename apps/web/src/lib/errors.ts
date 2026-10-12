@@ -78,8 +78,15 @@ export function explainError(raw: string): { title: string; detail?: string } {
     )
   }
 
-  // Request too large for the model.
-  if (low.includes('context length') || low.includes('maximum context') || low.includes('too many tokens') || status === 413) {
+  // Payload too large to send (usually big attachments/images).
+  if (status === 413) {
+    return withDetail(
+      'The message was too large to send (413). Large images/attachments or a very long message can cause this — remove or shrink attachments and try again.',
+    )
+  }
+
+  // Request too large for the model's context window.
+  if (low.includes('context length') || low.includes('maximum context') || low.includes('too many tokens')) {
     return withDetail(
       'The conversation is too large for this model (context length exceeded). Start a new session or shorten the chat.',
     )

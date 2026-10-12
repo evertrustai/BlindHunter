@@ -56,7 +56,9 @@ function originAllowed(origin: string): boolean {
 
 export async function buildApp() {
   const initial = await loadSettings()
-  const app = Fastify({ logger: { level: initial.logLevel ?? 'info' } })
+  // 30 MB body limit so pasted screenshots/images (base64-inflated) aren't rejected
+  // with a 413; the composer caps individual images well under this. (QA-16)
+  const app = Fastify({ logger: { level: initial.logLevel ?? 'info' }, bodyLimit: 30 * 1024 * 1024 })
 
   await loadGroupsFromDisk()
   await loadAgentsFromDisk()
@@ -71,6 +73,16 @@ export async function buildApp() {
   app.addHook('onRequest', async (req, reply) => {
     if (!hostAllowed(req.headers.host)) {
       return reply.code(403).type('application/json').send({ error: 'forbidden: host not allowed' })
+    }
+  })
+  // CSRF guard: CORS only stops a foreign page from READING our responses, not from
+  // SENDING a simple state-changing request. Reject any mutation carrying a non-loopback
+  // Origin; the local UI (and non-browser clients with no Origin) are unaffected. (QA-14)
+  const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+  app.addHook('onRequest', async (req, reply) => {
+    const origin = req.headers.origin
+    if (origin && MUTATING.has(req.method) && !originAllowed(origin)) {
+      return reply.code(403).type('application/json').send({ error: 'forbidden: cross-origin request' })
     }
   })
   // Connect configured MCP servers in the background so startup isn't blocked.

@@ -19,7 +19,7 @@ import {
 import { loadSettings, loadCredentials } from '../config/store.js'
 import { resolveShellKind } from '../tools/shell.js'
 import { findByName, getAgent, listSubagents } from '../agents/store.js'
-import { setSessionAgent } from '../sessions/store.js'
+import { setSessionAgent, setSessionModel } from '../sessions/store.js'
 import { mcpExtraTools } from '../mcp/manager.js'
 import { startRun, subscribe, stopRun, isRunning } from '../agent/runs.js'
 import type { ChatMessage, AgentEvent } from '../agent/types.js'
@@ -101,6 +101,9 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete('/api/sessions/:id', async (req) => {
     const { id } = req.params as { id: string }
+    // Abort any background run before removing the session, so it doesn't keep
+    // issuing model/tool work after its UI and controls are gone. (QA-06)
+    stopRun(id)
     return { ok: await deleteSession(id) }
   })
 
@@ -159,7 +162,17 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       reply.code(400)
       return { error: `unknown provider: ${providerId || '(none)'} — configure one in Settings › Models` }
     }
+    // A disabled provider must not receive new requests, even from an existing chat. (QA-20)
+    if (provider.enabled === false) {
+      reply.code(400)
+      return { error: `the "${provider.displayName || providerId}" provider is disabled — enable it in Settings › Models` }
+    }
     const contextWindow = provider.models.find((m) => m.id === modelId)?.contextWindow ?? provider.defaultContext ?? 0
+
+    // Remember the model chosen for this turn so reopening the session keeps it. (QA-18)
+    if (typeof model === 'string' && model && model !== session.model) {
+      setSessionModel(id, model)
+    }
 
     // Resolve the permission mode server-side: honour a valid value from the request
     // (the composer picker), but never silently fall back to "auto" when it's missing
@@ -201,6 +214,12 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       history: session.messages,
       userMessage: String(content),
       userImages,
+      // Configurable runaway guard — clamped to a sane ceiling so a task can run long
+      // without a single stray setting letting it loop forever. (long-hunt fix)
+      maxSteps:
+        typeof settings.maxSteps === 'number' && settings.maxSteps > 0
+          ? Math.min(Math.floor(settings.maxSteps), 1000)
+          : undefined,
       contextWindow,
       permission: effectivePermission,
       effort,
