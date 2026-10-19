@@ -867,22 +867,20 @@ a.ab-v:hover {
   color: var(--txt);
   font-weight: 600;
 }
-.tok-scroll {
-  overflow-x: auto;
-  padding-bottom: 2px;
+.tok-plot {
+  width: 100%;
 }
 .tok-grid {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(7, 12px);
-  grid-auto-columns: 12px;
+  grid-template-rows: repeat(7, auto);
   gap: 3px;
-  width: max-content;
+  width: 100%;
 }
 .tok-cell {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 2px;
   background: rgba(128, 128, 128, 0.14);
 }
 .tok-cell[data-lvl='1'] {
@@ -899,6 +897,7 @@ a.ab-v:hover {
 }
 .tok-months {
   position: relative;
+  width: 100%;
   height: 14px;
   margin-top: 7px;
 }
@@ -908,6 +907,24 @@ a.ab-v:hover {
   font-size: 11px;
   color: var(--txt-3);
   white-space: nowrap;
+}
+.tok-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 12px;
+}
+.tok-legend-l {
+  font-size: 11px;
+  color: var(--txt-3);
+  margin: 0 3px;
+}
+.tok-legend-cell {
+  width: 11px;
+  height: 11px;
+  aspect-ratio: auto;
+  flex: none;
 }
 .tok-empty {
   margin-top: 12px;

@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import type { UsageStats } from '../lib/api'
 
 type View = 'daily' | 'weekly' | 'cumulative'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const CELL = 12 // px, must match .tok-cell size in CSS
-const GAP = 3 // px, must match .tok-grid gap in CSS
-const STEP = CELL + GAP
 
 function trimZero(x: number): string {
   return x.toFixed(1).replace(/\.0$/, '')
@@ -100,19 +97,12 @@ function Stat({ value, label, title }: { value: string; label: string; title?: s
 export function TokenActivity() {
   const [stats, setStats] = useState<UsageStats | null>(null)
   const [view, setView] = useState<View>('daily')
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void api.getUsage().then(setStats).catch(() => setStats(null))
   }, [])
 
   const grid = useMemo(() => buildGrid(stats?.daily ?? [], view), [stats, view])
-
-  // Show the most recent weeks (where current activity is) by default.
-  useEffect(() => {
-    const el = scrollRef.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [grid])
 
   if (!stats) return null
 
@@ -129,8 +119,8 @@ export function TokenActivity() {
             ))}
           </div>
         </div>
-        <div className="tok-scroll" ref={scrollRef}>
-          <div className="tok-grid">
+        <div className="tok-plot">
+          <div className="tok-grid" style={{ gridTemplateColumns: `repeat(${grid.weeks}, 1fr)` }}>
             {grid.cells.map((c, i) =>
               c ? (
                 <span
@@ -144,13 +134,20 @@ export function TokenActivity() {
               ),
             )}
           </div>
-          <div className="tok-months" style={{ width: grid.weeks * STEP }}>
+          <div className="tok-months">
             {grid.months.map((m, i) => (
-              <span key={i} className="tok-month" style={{ left: m.col * STEP }}>
+              <span key={i} className="tok-month" style={{ left: `${(m.col / grid.weeks) * 100}%` }}>
                 {m.label}
               </span>
             ))}
           </div>
+        </div>
+        <div className="tok-legend" title="Darker = more tokens used that day">
+          <span className="tok-legend-l">Less</span>
+          {[0, 1, 2, 3, 4].map((lvl) => (
+            <span key={lvl} className="tok-cell tok-legend-cell" data-lvl={lvl} />
+          ))}
+          <span className="tok-legend-l">More</span>
         </div>
         {stats.lifetime === 0 && (
           <div className="tok-empty">No token usage recorded yet — this fills in as you run the agent.</div>
