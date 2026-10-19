@@ -88,12 +88,27 @@ async function ensureContext(): Promise<BrowserContext> {
   return launching
 }
 
+/** Does the input look like a host/URL (vs. a search query)? */
+function looksLikeHost(s: string): boolean {
+  const host = s.split(/[/?#]/)[0] // strip any path/query/fragment
+  if (!host || /\s/.test(host)) return false // hosts have no spaces
+  if (/^\d{1,3}(\.\d{1,3}){3}(:\d+)?$/.test(host)) return true // IPv4[:port]
+  if (/^[a-z0-9-]+:\d+$/i.test(host)) return true // host:port (e.g. myserver:8080)
+  // a dotted hostname ending in a letter TLD, e.g. example.com, a.b.co.uk
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d+)?$/i.test(host) && /\.[a-z]{2,}(:\d+)?$/i.test(host)
+}
+
 function normalizeUrl(u: string): string {
   const s = u.trim()
   if (!s) return 'about:blank'
   if (/^[a-z]+:\/\//i.test(s) || s === 'about:blank') return s
   if (/^(localhost|127\.0\.0\.1|\[?::1\]?|0\.0\.0\.0)(:|\/|$)/i.test(s)) return `http://${s}`
-  return `https://${s}`
+  if (looksLikeHost(s)) return `https://${s}`
+  // Not a URL — treat the address-bar text as a Google web search (like a real
+  // browser), so a bare term like "google" searches instead of failing on an
+  // invalid host. (Google occasionally shows a bot-check page to this automated
+  // browser; it can be cleared in the shared panel when it appears.)
+  return `https://www.google.com/search?q=${encodeURIComponent(s)}`
 }
 
 function attach(tab: Tab): void {
