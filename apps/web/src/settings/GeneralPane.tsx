@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { AppSettings } from '../lib/api'
 import { applyLanguage, applyTheme } from '../lib/appearance'
+import { TokenActivity } from '../components/TokenActivity'
 
 const LANGS: { code: string; label: string }[] = [
   { code: 'en', label: 'English' },
@@ -42,6 +43,8 @@ export function GeneralPane() {
 
   return (
     <>
+      <TokenActivity />
+
       <div className="grouphdr">
         Appearance
         {saved && <span className="saved-tag">✓ Saved</span>}

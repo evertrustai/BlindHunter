@@ -169,6 +169,17 @@ export interface Usage {
   context: number
 }
 
+/** Aggregated token-usage stats for the Settings "Token activity" dashboard. */
+export interface UsageStats {
+  /** One entry per calendar day, oldest first (total is 0 on inactive days). */
+  daily: { date: string; total: number }[]
+  lifetime: number
+  peak: number
+  mostUsedModel: string | null
+  longestStreak: number
+  currentStreak: number
+}
+
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => '')}`)
   return (await res.json()) as T
@@ -191,6 +202,8 @@ export const api = {
     return (await r.json()) as { models?: { id: string; grade?: string; vision?: boolean }[]; error?: string }
   },
   getModels: () => fetch('/api/models').then((r) => json<ModelRef[]>(r)),
+  getUsage: (days?: number) =>
+    fetch(`/api/usage${days ? `?days=${days}` : ''}`).then((r) => json<UsageStats>(r)),
   listDir: (path?: string) =>
     fetch(`/api/fs/list${path ? `?path=${encodeURIComponent(path)}` : ''}`).then((r) => json<FsList>(r)),
   pickFolder: () =>

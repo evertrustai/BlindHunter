@@ -9,9 +9,11 @@ import { importRoutes } from './routes/import.js'
 import { agentRoutes } from './routes/agents.js'
 import { mcpRoutes } from './routes/mcp.js'
 import { browserRoutes } from './routes/browser.js'
+import { usageRoutes } from './routes/usage.js'
 import { loadSessionsFromDisk, loadGroupsFromDisk } from './sessions/store.js'
 import { loadAgentsFromDisk } from './agents/store.js'
 import { loadMcpFromDisk } from './mcp/store.js'
+import { loadUsageFromDisk } from './usage/store.js'
 import { initMcp } from './mcp/manager.js'
 import { loadSettings } from './config/store.js'
 import { systemRoutes } from './routes/system.js'
@@ -64,6 +66,7 @@ export async function buildApp() {
   await loadAgentsFromDisk()
   await loadMcpFromDisk()
   await loadSessionsFromDisk()
+  await loadUsageFromDisk()
   await app.register(cors, {
     // Same-origin and non-browser clients send no Origin header — allow those;
     // otherwise only loopback origins may read responses.
@@ -99,6 +102,7 @@ export async function buildApp() {
   await agentRoutes(app)
   await mcpRoutes(app)
   await browserRoutes(app)
+  await usageRoutes(app)
   await systemRoutes(app)
 
   return app

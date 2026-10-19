@@ -22,6 +22,7 @@ import { findByName, getAgent, listSubagents } from '../agents/store.js'
 import { setSessionAgent, setSessionModel } from '../sessions/store.js'
 import { mcpExtraTools } from '../mcp/manager.js'
 import { startRun, subscribe, stopRun, isRunning } from '../agent/runs.js'
+import { recordUsage } from '../usage/store.js'
 import type { ChatMessage, AgentEvent } from '../agent/types.js'
 
 /** First @mention of a known top-level agent in a message, e.g. "@recon". */
@@ -264,7 +265,10 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     // disconnects (navigates to another session, closes the tab, etc.).
     startRun(id, make, {
       onEvent: (ev) => {
-        if (ev.type === 'assistant_message') {
+        if (ev.type === 'usage') {
+          // Track token usage per day/model for the Settings token-activity dashboard.
+          recordUsage(modelRef, ev.prompt, ev.completion, ev.total)
+        } else if (ev.type === 'assistant_message') {
           toStore.push({ role: 'assistant', content: ev.content })
         } else if (ev.type === 'tool_call' || ev.type === 'approval_request') {
           toolMeta.set(ev.id, { name: ev.name, args: ev.arguments })
