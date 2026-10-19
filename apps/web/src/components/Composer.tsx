@@ -8,6 +8,7 @@ import { useSlashMenu } from '../hooks/useSlashMenu'
 import { useMentionMenu } from '../hooks/useMentionMenu'
 import { SLASH_COMMANDS } from '../lib/commands'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
 import type { SlashCommand, SettingsTabId } from '../lib/commands'
 import type { ModelRef, Agent } from '../lib/api'
 
@@ -48,6 +49,7 @@ export function Composer({
   onOpenAgents,
   onBrowser,
 }: ComposerProps) {
+  const t = useT()
   const c = useComposer()
   const slash = useSlashMenu(c.text, COMMANDS)
   const mention = useMentionMenu(c.text, c.setText, agents)
@@ -163,7 +165,7 @@ export function Composer({
           rows={1}
           placeholder={
             !workspace
-              ? 'Choose a workspace to start'
+              ? t('Choose a workspace to start')
               : !selectedModel
                 ? 'Add a provider in Settings › Models'
                 : 'Ask Pentest Mode…  (/ commands · @ agents)'

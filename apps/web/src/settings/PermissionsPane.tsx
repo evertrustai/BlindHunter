@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Toggle } from '../components/Toggle'
 import { api } from '../lib/api'
 import type { AppSettings } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 export function PermissionsPane() {
+  const t = useT()
   const [mode, setMode] = useState<AppSettings['defaultPermission'] | null>(null)
   const [maxSteps, setMaxSteps] = useState<string>('')
   const [saved, setSaved] = useState(false)
@@ -49,12 +51,12 @@ export function PermissionsPane() {
   return (
     <>
       <div className="grouphdr">
-        Permissions
-        {saved && <span className="saved-tag">✓ Saved</span>}
+        {t('Permissions')}
+        {saved && <span className="saved-tag">✓ {t('Saved')}</span>}
       </div>
       <div className="setrow">
         <div>
-          <div className="setrow-t">Default permissions</div>
+          <div className="setrow-t">{t('Default permissions')}</div>
           <div className="setrow-d">
             BlindHunter reads and edits files in the current workspace, and asks before touching anything outside it.
           </div>
@@ -64,7 +66,7 @@ export function PermissionsPane() {
       </div>
       <div className="setrow">
         <div>
-          <div className="setrow-t">Full access</div>
+          <div className="setrow-t">{t('Full access')}</div>
           <div className="setrow-d">
             Runs commands and edits any file on the host with network access, without asking. Significantly raises the
             risk of data loss or leaks.
@@ -78,11 +80,11 @@ export function PermissionsPane() {
       </div>
 
       <div className="grouphdr" style={{ marginTop: 22 }}>
-        Autonomy
+        {t('Autonomy')}
       </div>
       <div className="setrow">
         <div>
-          <div className="setrow-t">Max steps per task</div>
+          <div className="setrow-t">{t('Max steps per task')}</div>
           <div className="setrow-d">
             How many think → act → observe rounds the agent may run for a single task before it
             stops itself. This is a runaway safety limit, not a target — the agent normally

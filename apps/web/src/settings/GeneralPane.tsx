@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { AppSettings } from '../lib/api'
 import { applyLanguage, applyTheme } from '../lib/appearance'
+import { useT } from '../lib/i18n'
 import { TokenActivity } from '../components/TokenActivity'
 
 const LANGS: { code: string; label: string }[] = [
@@ -18,6 +19,7 @@ const LANGS: { code: string; label: string }[] = [
 ]
 
 export function GeneralPane() {
+  const t = useT()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -46,13 +48,13 @@ export function GeneralPane() {
       <TokenActivity />
 
       <div className="grouphdr">
-        Appearance
-        {saved && <span className="saved-tag">✓ Saved</span>}
+        {t('Appearance')}
+        {saved && <span className="saved-tag">✓ {t('Saved')}</span>}
       </div>
       <div className="setrow">
         <div>
-          <div className="setrow-t">Language</div>
-          <div className="setrow-d">Interface language and text direction (RTL for Arabic).</div>
+          <div className="setrow-t">{t('Language')}</div>
+          <div className="setrow-d">{t('Interface language and text direction (RTL for Arabic).')}</div>
         </div>
         <select
           className="ctl"
@@ -72,8 +74,8 @@ export function GeneralPane() {
       </div>
       <div className="setrow">
         <div>
-          <div className="setrow-t">Theme</div>
-          <div className="setrow-d">Light or dark appearance.</div>
+          <div className="setrow-t">{t('Theme')}</div>
+          <div className="setrow-d">{t('Light or dark appearance.')}</div>
         </div>
         <select
           className="ctl"
@@ -84,16 +86,16 @@ export function GeneralPane() {
             void patch('theme', e.target.value)
           }}
         >
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
+          <option value="dark">{t('Dark')}</option>
+          <option value="light">{t('Light')}</option>
         </select>
       </div>
 
-      <div className="grouphdr">Agent environment</div>
+      <div className="grouphdr">{t('Agent environment')}</div>
       <div className="setrow">
         <div>
-          <div className="setrow-t">Where the agent runs</div>
-          <div className="setrow-d">Windows native, or inside WSL (Linux).</div>
+          <div className="setrow-t">{t('Where the agent runs')}</div>
+          <div className="setrow-d">{t('Windows native, or inside WSL (Linux).')}</div>
         </div>
         <select
           className="ctl"
@@ -101,16 +103,16 @@ export function GeneralPane() {
           value={settings.agentEnvironment}
           onChange={(e) => void patch('agentEnvironment', e.target.value)}
         >
-          <option value="windows">Windows native</option>
+          <option value="windows">{t('Windows native')}</option>
           <option value="wsl">WSL</option>
         </select>
       </div>
 
-      <div className="grouphdr">Integrated terminal</div>
+      <div className="grouphdr">{t('Integrated terminal')}</div>
       <div className="setrow">
         <div>
-          <div className="setrow-t">Terminal shell</div>
-          <div className="setrow-d">Which shell the agent runs bash commands in.</div>
+          <div className="setrow-t">{t('Terminal shell')}</div>
+          <div className="setrow-d">{t('Which shell the agent runs bash commands in.')}</div>
         </div>
         <select
           className="ctl"

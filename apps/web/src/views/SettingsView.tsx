@@ -7,6 +7,7 @@ import { PluginsPane } from '../settings/PluginsPane'
 import { DeveloperPane } from '../settings/DeveloperPane'
 import { AboutPane } from '../settings/AboutPane'
 import type { SettingsTabId } from '../lib/commands'
+import { useT } from '../lib/i18n'
 
 const TABS: { id: SettingsTabId; label: string; icon: string }[] = [
   { id: 'general', label: 'General', icon: '◐' },
@@ -26,6 +27,7 @@ interface SettingsViewProps {
 }
 
 export function SettingsView({ onClose, onDataChanged, initialTab }: SettingsViewProps) {
+  const t = useT()
   const [tab, setTab] = useState<SettingsTabId>(initialTab ?? 'general')
 
   // Re-sync if the caller opens Settings again on a different tab (e.g. another "/" command).
@@ -36,7 +38,7 @@ export function SettingsView({ onClose, onDataChanged, initialTab }: SettingsVie
   return (
     <div>
       <div className="set-head">
-        <div className="set-title">Settings</div>
+        <div className="set-title">{t('Settings')}</div>
         <div className="set-head-r">
           <button className="set-close" aria-label="Close settings" onClick={onClose}>
             ✕
@@ -45,9 +47,9 @@ export function SettingsView({ onClose, onDataChanged, initialTab }: SettingsVie
       </div>
       <div className="set-body">
         <nav className="set-nav">
-          {TABS.map((t) => (
-            <button key={t.id} className={tab === t.id ? 'sn active' : 'sn'} onClick={() => setTab(t.id)}>
-              <span className="lead">{t.icon}</span> {t.label}
+          {TABS.map((tb) => (
+            <button key={tb.id} className={tab === tb.id ? 'sn active' : 'sn'} onClick={() => setTab(tb.id)}>
+              <span className="lead">{tb.icon}</span> {t(tb.label)}
             </button>
           ))}
         </nav>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import type { UsageStats } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 type View = 'daily' | 'weekly' | 'cumulative'
 
@@ -20,9 +21,6 @@ function shortModel(ref: string | null): string {
   if (!ref) return '—'
   const parts = ref.split('/')
   return parts[parts.length - 1] || ref
-}
-function dayWord(n: number): string {
-  return `${n} day${n === 1 ? '' : 's'}`
 }
 /** Parse a "YYYY-MM-DD" key as a LOCAL date (avoids UTC off-by-one). */
 function localDate(key: string): Date {
@@ -95,6 +93,7 @@ function Stat({ value, label, title }: { value: string; label: string; title?: s
 
 /** Settings dashboard: a 365-day token-usage heatmap plus lifetime/peak/streak stats. */
 export function TokenActivity() {
+  const t = useT()
   const [stats, setStats] = useState<UsageStats | null>(null)
   const [view, setView] = useState<View>('daily')
 
@@ -106,15 +105,17 @@ export function TokenActivity() {
 
   if (!stats) return null
 
+  const dayWord = (n: number) => `${n} ${t(n === 1 ? 'day' : 'days')}`
+
   return (
     <div className="tok-wrap">
       <div className="tok-heat">
         <div className="tok-heat-head">
-          <span className="tok-heat-title">Token activity</span>
+          <span className="tok-heat-title">{t('Token activity')}</span>
           <div className="tok-views">
             {(['daily', 'weekly', 'cumulative'] as View[]).map((v) => (
               <button key={v} className={v === view ? 'tok-view on' : 'tok-view'} onClick={() => setView(v)}>
-                {v.charAt(0).toUpperCase() + v.slice(1)}
+                {t(v.charAt(0).toUpperCase() + v.slice(1))}
               </button>
             ))}
           </div>
@@ -143,11 +144,11 @@ export function TokenActivity() {
           </div>
         </div>
         <div className="tok-legend" title="Darker = more tokens used that day">
-          <span className="tok-legend-l">Less</span>
+          <span className="tok-legend-l">{t('Less')}</span>
           {[0, 1, 2, 3, 4].map((lvl) => (
             <span key={lvl} className="tok-cell tok-legend-cell" data-lvl={lvl} />
           ))}
-          <span className="tok-legend-l">More</span>
+          <span className="tok-legend-l">{t('More')}</span>
         </div>
         {stats.lifetime === 0 && (
           <div className="tok-empty">No token usage recorded yet — this fills in as you run the agent.</div>
@@ -155,11 +156,11 @@ export function TokenActivity() {
       </div>
 
       <div className="tok-stats">
-        <Stat value={fmtTokens(stats.lifetime)} label="Lifetime tokens" />
-        <Stat value={fmtTokens(stats.peak)} label="Peak tokens" />
-        <Stat value={shortModel(stats.mostUsedModel)} label="Most used model" title={stats.mostUsedModel ?? undefined} />
-        <Stat value={dayWord(stats.longestStreak)} label="Longest streak" />
-        <Stat value={dayWord(stats.currentStreak)} label="Current streak" />
+        <Stat value={fmtTokens(stats.lifetime)} label={t('Lifetime tokens')} />
+        <Stat value={fmtTokens(stats.peak)} label={t('Peak tokens')} />
+        <Stat value={shortModel(stats.mostUsedModel)} label={t('Most used model')} title={stats.mostUsedModel ?? undefined} />
+        <Stat value={dayWord(stats.longestStreak)} label={t('Longest streak')} />
+        <Stat value={dayWord(stats.currentStreak)} label={t('Current streak')} />
       </div>
     </div>
   )

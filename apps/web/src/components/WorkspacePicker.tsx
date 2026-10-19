@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, baseName } from '../lib/api'
+import { useT } from '../lib/i18n'
 import type { DirEntry } from '../lib/api'
 
 /**
@@ -14,6 +15,7 @@ export function WorkspacePicker({
   workspace: string | null
   onPick: (path: string) => void
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [cur, setCur] = useState('')
   const [parent, setParent] = useState<string | null>(null)
@@ -73,7 +75,7 @@ export function WorkspacePicker({
     }
   }
 
-  const label = busy && !open ? 'Opening…' : workspace ? baseName(workspace) : 'Open folder'
+  const label = busy && !open ? 'Opening…' : workspace ? baseName(workspace) : t('Open folder')
 
   return (
     <div className="pill wspick" ref={ref}>

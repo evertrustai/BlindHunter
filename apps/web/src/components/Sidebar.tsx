@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { baseName } from '../lib/api'
 import type { Group, Session } from '../lib/api'
 import type { SettingsTabId } from '../lib/commands'
+import { useT } from '../lib/i18n'
 import { SessionRow } from './SessionRow'
 import { ConfirmModal } from './Modal'
 
@@ -38,6 +39,7 @@ function sessionLabel(s: Session): string {
 /** Left rail: brand, new session, grouped/pinned recent sessions, settings. */
 export function Sidebar(props: SidebarProps) {
   const { sessions, groups, activeId, onNew, onOpenSettings, onOpenAgents, onCollapse, onAddWorkspace } = props
+  const t = useT()
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [sortIdx, setSortIdx] = useState(0)
@@ -106,7 +108,7 @@ export function Sidebar(props: SidebarProps) {
       <nav className="nav">
         <button className="nav-item primary" onClick={onNew}>
           <span className="ni-ico">⊕</span>
-          <span className="ni-label">New session</span>
+          <span className="ni-label">{t('New session')}</span>
           <span className="kbd">Ctrl N</span>
         </button>
         <button
@@ -117,25 +119,25 @@ export function Sidebar(props: SidebarProps) {
           }}
         >
           <span className="ni-ico">⌕</span>
-          <span className="ni-label">Search</span>
+          <span className="ni-label">{t('Search')}</span>
           <span className="kbd">Ctrl K</span>
         </button>
         <button className="nav-item" onClick={() => onOpenAgents('agent')}>
           <span className="ni-ico">{'⚡︎'}</span>
-          <span className="ni-label">Automations</span>
+          <span className="ni-label">{t('Automations')}</span>
         </button>
         <button className="nav-item" onClick={() => onOpenSettings('plugins')}>
           <span className="ni-ico">⊞</span>
-          <span className="ni-label">Plugins</span>
+          <span className="ni-label">{t('Plugins')}</span>
         </button>
         <button className="nav-item" onClick={() => onOpenSettings('general')}>
           <span className="ni-ico">⚙</span>
-          <span className="ni-label">Settings</span>
+          <span className="ni-label">{t('Settings')}</span>
         </button>
       </nav>
 
       <div className="sec">
-        Workspaces
+        {t('Workspaces')}
         <span className="ico">
           <button aria-label="Sort sessions" title={sort.label} onClick={() => setSortIdx((i) => (i + 1) % SORTS.length)}>
             ⇅
@@ -150,7 +152,7 @@ export function Sidebar(props: SidebarProps) {
         <input
           className="ws-search"
           autoFocus
-          placeholder="Search sessions…"
+          placeholder={t('Search sessions…')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -163,12 +165,12 @@ export function Sidebar(props: SidebarProps) {
       )}
 
       <div className="ws-list">
-        {sessions.length === 0 && <div className="ws-empty-hint">No sessions yet.</div>}
+        {sessions.length === 0 && <div className="ws-empty-hint">{t('No sessions yet.')}</div>}
         {sessions.length > 0 && matched.length === 0 && <div className="ws-empty-hint">No sessions match “{query}”.</div>}
 
         {pinned.length > 0 && (
           <>
-            <div className="group">Pinned</div>
+            <div className="group">{t('Pinned')}</div>
             {pinned.map(row)}
           </>
         )}
@@ -191,7 +193,7 @@ export function Sidebar(props: SidebarProps) {
 
         {ungrouped.length > 0 && (
           <>
-            <div className="group">Recent</div>
+            <div className="group">{t('Recent')}</div>
             {ungrouped.map(row)}
           </>
         )}

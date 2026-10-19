@@ -1,4 +1,5 @@
 import { Dropdown, MenuItem } from './Dropdown'
+import { useT } from '../lib/i18n'
 import type { ModelRef, Usage } from '../lib/api'
 
 function fmtTok(n: number): string {
@@ -55,7 +56,8 @@ export function ComposerBar({
   terminals = 0,
   running = false,
 }: ComposerBarProps) {
-  const permLabel = PERMISSIONS.find((p) => p.id === permission)?.t ?? 'Auto'
+  const t = useT()
+  const permLabel = t(PERMISSIONS.find((p) => p.id === permission)?.t ?? 'Auto')
   const current = models.find((m) => m.ref === selectedModel)
   const modelLabel = current ? current.name : models.length ? 'Select model' : 'No model'
   const effortLabel = EFFORTS.find((e) => e.id === effort)?.t ?? 'High'
