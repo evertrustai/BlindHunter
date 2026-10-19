@@ -42,6 +42,20 @@ let seq = 0
 /** Installed Chromium-family browsers to try first, so no binary has to be downloaded. */
 const CHANNELS = ['chrome', 'msedge'] as const
 
+/**
+ * Launch options that keep the browser from advertising that it's automated, so sites
+ * like Google don't serve a bot-check / reCAPTCHA to the in-app browser:
+ *  - `--headless=new` runs Chrome's modern headless (a normal Chrome UA, not the
+ *    easily-flagged "HeadlessChrome"), while still being windowless for the panel;
+ *  - `--disable-blink-features=AutomationControlled` keeps `navigator.webdriver` false;
+ *  - dropping `--enable-automation` removes the remaining automation fingerprints.
+ */
+const STEALTH = {
+  headless: false,
+  args: ['--headless=new', '--disable-blink-features=AutomationControlled'],
+  ignoreDefaultArgs: ['--enable-automation'],
+}
+
 /** Launch (once) an installed Chrome/Edge, or fall back to a bundled Chromium build. */
 async function ensureContext(): Promise<BrowserContext> {
   if (context) return context
@@ -50,7 +64,7 @@ async function ensureContext(): Promise<BrowserContext> {
     let lastErr: unknown
     for (const channel of CHANNELS) {
       try {
-        browser = await chromium.launch({ channel, headless: true })
+        browser = await chromium.launch({ channel, ...STEALTH })
         break
       } catch (e) {
         lastErr = e
@@ -58,7 +72,7 @@ async function ensureContext(): Promise<BrowserContext> {
     }
     if (!browser) {
       try {
-        browser = await chromium.launch({ headless: true })
+        browser = await chromium.launch({ ...STEALTH })
       } catch (e) {
         launching = null
         const detail = lastErr instanceof Error ? lastErr.message : e instanceof Error ? e.message : String(e)
@@ -72,9 +86,21 @@ async function ensureContext(): Promise<BrowserContext> {
     const insecure = await loadSettings()
       .then((s) => s.browserInsecureCerts === true)
       .catch(() => false)
+    // Chrome's headless UA still carries "HeadlessChrome", which sites flag as a bot.
+    // Derive the real UA and strip that marker so we present as a normal Chrome.
+    let userAgent: string | undefined
+    try {
+      const probe = await browser.newContext()
+      const ua = await probe.newPage().then((p) => p.evaluate(() => navigator.userAgent))
+      await probe.close()
+      if (/HeadlessChrome/i.test(ua)) userAgent = ua.replace(/HeadlessChrome/gi, 'Chrome')
+    } catch {
+      /* fall back to the browser's default UA */
+    }
     context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
       ignoreHTTPSErrors: insecure,
+      ...(userAgent ? { userAgent } : {}),
     })
     browser.on('disconnected', () => {
       browser = null
