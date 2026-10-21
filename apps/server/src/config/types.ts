@@ -4,7 +4,7 @@ export interface ProviderModel {
   contextWindow?: number
 }
 
-export type ProviderProtocol = 'openai-chat'
+export type ProviderProtocol = 'openai-chat' | 'anthropic'
 
 export interface Provider {
   id: string

@@ -1,4 +1,4 @@
-import { streamChat } from '../providers/openai.js'
+import { streamProvider } from '../providers/chat.js'
 import { TOOL_SCHEMAS, executeTool } from '../tools/registry.js'
 import type { ToolSchema } from '../providers/openai.js'
 import type { ShellKind } from '../tools/shell.js'
@@ -101,6 +101,8 @@ export interface RunOpts {
   apiKey?: string
   headers?: Record<string, string>
   model: string
+  /** Provider wire protocol: 'anthropic' (Claude subscription) or OpenAI-compatible. */
+  protocol?: string
   cwd: string
   history: ChatMessage[]
   userMessage: string
@@ -185,7 +187,7 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
     const acc = new Map<number, { id: string; name: string; args: string }>()
 
     try {
-      for await (const d of streamChat({
+      for await (const d of streamProvider(opts.protocol, {
         baseUrl: opts.baseUrl,
         apiKey: opts.apiKey,
         headers: opts.headers,

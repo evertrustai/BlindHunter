@@ -10,6 +10,7 @@ import { agentRoutes } from './routes/agents.js'
 import { mcpRoutes } from './routes/mcp.js'
 import { browserRoutes } from './routes/browser.js'
 import { usageRoutes } from './routes/usage.js'
+import { authRoutes } from './routes/auth.js'
 import { loadSessionsFromDisk, loadGroupsFromDisk } from './sessions/store.js'
 import { loadAgentsFromDisk } from './agents/store.js'
 import { loadMcpFromDisk } from './mcp/store.js'
@@ -103,6 +104,7 @@ export async function buildApp() {
   await mcpRoutes(app)
   await browserRoutes(app)
   await usageRoutes(app)
+  await authRoutes(app)
   await systemRoutes(app)
 
   return app

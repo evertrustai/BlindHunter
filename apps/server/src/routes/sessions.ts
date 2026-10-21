@@ -23,6 +23,7 @@ import { setSessionAgent, setSessionModel } from '../sessions/store.js'
 import { mcpExtraTools } from '../mcp/manager.js'
 import { startRun, subscribe, stopRun, isRunning } from '../agent/runs.js'
 import { recordUsage } from '../usage/store.js'
+import { getValidToken } from '../auth/claude.js'
 import type { ChatMessage, AgentEvent } from '../agent/types.js'
 
 /** First @mention of a known top-level agent in a message, e.g. "@recon". */
@@ -170,6 +171,14 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     }
     const contextWindow = provider.models.find((m) => m.id === modelId)?.contextWindow ?? provider.defaultContext ?? 0
 
+    // A connected Claude subscription authenticates with its managed OAuth token (auto-
+    // refreshed), not a stored API key, and talks the Anthropic protocol.
+    const apiKey = provider.protocol === 'anthropic' ? ((await getValidToken()) ?? undefined) : creds[providerId]
+    if (provider.protocol === 'anthropic' && !apiKey) {
+      reply.code(400)
+      return { error: 'Your Claude subscription is not connected — connect it in Settings › Models.' }
+    }
+
     // Remember the model chosen for this turn so reopening the session keeps it. (QA-18)
     if (typeof model === 'string' && model && model !== session.model) {
       setSessionModel(id, model)
@@ -208,7 +217,8 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
 
     const runOpts = {
       baseUrl: provider.baseUrl,
-      apiKey: creds[providerId],
+      apiKey,
+      protocol: provider.protocol,
       headers: provider.headers,
       model: modelId,
       cwd: session.workspace,

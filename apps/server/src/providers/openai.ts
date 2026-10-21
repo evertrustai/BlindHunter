@@ -12,7 +12,7 @@ export interface StreamDelta {
   usage?: { prompt: number; completion: number; total: number }
 }
 
-interface StreamOpts {
+export interface StreamOpts {
   baseUrl: string
   apiKey?: string
   headers?: Record<string, string>

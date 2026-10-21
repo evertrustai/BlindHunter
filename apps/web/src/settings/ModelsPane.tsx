@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { Provider } from '../lib/api'
+import { ClaudeConnect } from './ClaudeConnect'
+
+/** The managed Claude-subscription provider is shown/handled by ClaudeConnect, not the list. */
+const CLAUDE_SUB_ID = 'claude-subscription'
 
 type Sub = 'main' | 'catalog' | 'custom'
 
@@ -353,12 +357,16 @@ export function ModelsPane() {
     )
   }
 
+  const listed = providers.filter((p) => p.id !== CLAUDE_SUB_ID)
   return (
     <div className="msub">
-      <div className="grouphdr">Connected providers</div>
+      <div className="grouphdr">Connect an account</div>
+      <ClaudeConnect onChanged={reload} />
+
+      <div className="grouphdr" style={{ marginTop: 24 }}>Connected providers</div>
       {err && <div className="setrow-d" style={{ color: 'var(--danger)' }}>{err}</div>}
-      {providers.length === 0 && <div className="stub">No providers yet. Add one to start using models.</div>}
-      {providers.map((p) => (
+      {listed.length === 0 && <div className="stub">No API-key providers yet. Add one to start using models.</div>}
+      {listed.map((p) => (
         <div className="prov-card" key={p.id} style={p.enabled ? undefined : { opacity: 0.6 }}>
           <div className="prov-top">
             <div className="prov-name">

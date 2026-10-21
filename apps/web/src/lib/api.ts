@@ -204,6 +204,18 @@ export const api = {
   getModels: () => fetch('/api/models').then((r) => json<ModelRef[]>(r)),
   getUsage: (days?: number) =>
     fetch(`/api/usage${days ? `?days=${days}` : ''}`).then((r) => json<UsageStats>(r)),
+  // ---- Connect with Claude (Pro/Max subscription OAuth) ----
+  startClaudeLogin: () =>
+    fetch('/api/auth/claude/start', { method: 'POST' }).then((r) => json<{ url: string; pkceId: string }>(r)),
+  completeClaudeLogin: (pkceId: string, code: string) =>
+    fetch('/api/auth/claude/complete', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ pkceId, code }) }).then(
+      (r) => json<{ ok: boolean; error?: string; models?: ProviderModel[] }>(r),
+    ),
+  claudeStatus: () =>
+    fetch('/api/auth/claude/status').then((r) =>
+      json<{ connected: boolean; expiresAt?: number; scopes?: string; models?: ProviderModel[] }>(r),
+    ),
+  disconnectClaude: () => fetch('/api/auth/claude/disconnect', { method: 'POST' }).then((r) => json<{ ok: boolean }>(r)),
   listDir: (path?: string) =>
     fetch(`/api/fs/list${path ? `?path=${encodeURIComponent(path)}` : ''}`).then((r) => json<FsList>(r)),
   pickFolder: () =>
