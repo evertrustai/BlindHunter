@@ -127,6 +127,9 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
               {busy ? 'Connecting…' : 'Finish'}
             </button>
           </div>
+          <button className="conn-reopen" onClick={begin}>
+            Re-open the sign-in page
+          </button>
         </div>
       )}
 

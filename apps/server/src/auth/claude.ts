@@ -18,7 +18,10 @@ const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e' // Claude Code's public
 const AUTHORIZE_URL = 'https://claude.ai/oauth/authorize'
 const TOKEN_URL = 'https://console.anthropic.com/v1/oauth/token'
 const REDIRECT_URI = 'https://console.anthropic.com/oauth/code/callback'
-const SCOPES = 'org:create_api_key user:profile user:inference'
+// Subscription-inference scopes only. The `org:create_api_key` scope is a console/org
+// permission a personal Pro/Max account doesn't have, and requesting it makes the
+// authorize page reject the request as "Invalid request format".
+const SCOPES = 'user:inference user:profile'
 const DEFAULT_TTL_SEC = 28_800 // 8h, per observed tokens
 
 function b64url(buf: Buffer): string {

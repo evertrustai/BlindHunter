@@ -1074,3 +1074,13 @@ a.ab-v:hover {
   color: var(--txt-3);
   line-height: 1.5;
 }
+.conn-reopen {
+  margin-top: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--amber-2);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
