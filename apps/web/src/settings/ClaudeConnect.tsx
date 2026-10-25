@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { SetupTokenTerminal } from '../components/SetupTokenTerminal'
 
 type Status = { connected: boolean; expiresAt?: number; scopes?: string; models?: { id: string }[] } | null
 
 /**
- * "Connect with Claude" — use a Claude Pro/Max subscription by pasting the key you were
- * given (an OAuth subscription token, or a plain Anthropic API key), so its models work in
- * BlindHunter without per-token API billing.
+ * "Connect with Claude" — connect a Claude Pro/Max subscription. The one-click flow runs
+ * `claude setup-token` in an embedded terminal: a browser opens, the user clicks Authorize,
+ * and the server captures the printed token and connects automatically. A manual paste field
+ * (for a token or an Anthropic API key) is kept as a fallback.
  */
 export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
   const [status, setStatus] = useState<Status>(null)
   const [loading, setLoading] = useState(true)
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
+  const [connecting, setConnecting] = useState(false)
   const [err, setErr] = useState('')
 
   async function refresh() {
@@ -27,6 +30,25 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
   useEffect(() => {
     void refresh()
   }, [])
+
+  // While the setup-token terminal is running, poll until the server captures + stores the
+  // token (status flips to connected), then close the flow.
+  useEffect(() => {
+    if (!connecting) return
+    const t = window.setInterval(async () => {
+      try {
+        const st = await api.claudeStatus()
+        if (st.connected) {
+          setStatus(st)
+          setConnecting(false)
+          onChanged?.()
+        }
+      } catch {
+        /* keep polling */
+      }
+    }, 2500)
+    return () => window.clearInterval(t)
+  }, [connecting, onChanged])
 
   // Store the pasted key (an sk-ant-oat01 subscription token, or an sk-ant-api03 API key).
   async function connect() {
@@ -88,45 +110,57 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
         <div className="conn-ico">✳</div>
         <div className="conn-info">
           <div className="conn-title">Connect with Claude</div>
-          <div className="conn-sub">Paste a Claude subscription token or an Anthropic API key.</div>
+          <div className="conn-sub">
+            {connecting ? 'Authorize in the browser — connecting automatically…' : 'One click, then Authorize in your browser.'}
+          </div>
         </div>
+        {!connecting && (
+          <button className="conn-go" onClick={() => { setErr(''); setConnecting(true) }}>
+            Connect with Claude →
+          </button>
+        )}
       </div>
 
-      <div className="conn-code">
-        <div className="conn-hint">
-          Paste your Claude key (it starts with <code>sk-ant-</code>) and connect:
-        </div>
-        <div className="conn-code-row">
-          <input
-            className="conn-input"
-            type="password"
-            placeholder="sk-ant-…"
-            value={key}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void connect()
-            }}
-          />
-          <button className="conn-go" onClick={connect} disabled={busy || !key.trim()}>
-            {busy ? 'Connecting…' : 'Connect'}
+      {connecting ? (
+        <div className="conn-setup">
+          <div className="conn-hint">
+            A browser opened — click <b>Authorize</b>. When your token appears below it's captured and stored
+            automatically. (If Claude asks for a code, paste it into this terminal.)
+          </div>
+          <SetupTokenTerminal />
+          <button className="conn-reopen" onClick={() => setConnecting(false)}>
+            Cancel
           </button>
         </div>
-        <div className="conn-hint" style={{ marginTop: 8, opacity: 0.8, lineHeight: 1.6 }}>
-          How to get a key:
-          <br />• <b>Subscription (Pro/Max):</b> run <code>claude setup-token</code> in a terminal and paste the{' '}
-          <code>sk-ant-oat01-…</code> token it prints.
-          <br />• <b>API key:</b> create one at <code>console.anthropic.com</code> and paste the{' '}
-          <code>sk-ant-api03-…</code> key.
+      ) : (
+        <div className="conn-code">
+          <div className="conn-hint">Already have a key? Paste it (a token or an Anthropic API key, starts with <code>sk-ant-</code>):</div>
+          <div className="conn-code-row">
+            <input
+              className="conn-input"
+              type="password"
+              placeholder="sk-ant-…"
+              value={key}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => setKey(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void connect()
+              }}
+            />
+            <button className="conn-go" onClick={connect} disabled={busy || !key.trim()}>
+              {busy ? 'Connecting…' : 'Connect'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {err && <div className="conn-err">{err}</div>}
 
       <div className="conn-note">
-        Your key is stored owner-only on this machine and is sent only to Anthropic. Using a Pro/Max subscription token
-        with a third-party app is against Anthropic's terms and unofficial — an API key is the supported option.
+        The one-click flow runs <code>claude setup-token</code> (needs Claude Code installed). Your token is stored
+        owner-only on this machine and is sent only to Anthropic. Using a Pro/Max subscription with a third-party app is
+        against Anthropic's terms and unofficial — an API key is the supported option.
       </div>
     </div>
   )

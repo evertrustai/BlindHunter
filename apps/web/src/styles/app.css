@@ -1710,3 +1710,20 @@
   padding: 0;
   font: inherit;
 }
+
+/* ---------- Claude connect: embedded setup-token terminal ---------- */
+.conn-setup {
+  margin-top: 10px;
+}
+.setup-term {
+  height: 240px;
+  margin-top: 8px;
+  padding: 6px 4px 6px 8px;
+  background: #0c0d10;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.setup-term .xterm {
+  height: 100%;
+}

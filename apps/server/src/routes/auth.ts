@@ -12,7 +12,7 @@ const FALLBACK_MODELS: ProviderModel[] = [
 ]
 
 /** Create/update the Claude subscription provider from the models the account can use. */
-async function upsertClaudeProvider(): Promise<Provider> {
+export async function upsertClaudeProvider(): Promise<Provider> {
   const fetched = await listModels()
   const models: ProviderModel[] = fetched.length
     ? fetched.map((m) => ({ id: m.id, name: m.name ?? m.id, contextWindow: 200000 }))
