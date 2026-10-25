@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { startLogin, completeLogin, status, disconnect, listModels } from '../auth/claude.js'
+import { startLogin, completeLogin, setKey, status, disconnect, listModels } from '../auth/claude.js'
 import { updateSettings, loadSettings } from '../config/store.js'
 import type { Provider, ProviderModel } from '../config/types.js'
 
@@ -36,6 +36,23 @@ async function upsertClaudeProvider(): Promise<Provider> {
 }
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
+  // Primary path: store a Claude key the user pasted in (OAuth subscription token or API key),
+  // then register the subscription as a provider.
+  app.post('/api/auth/claude/key', async (req, reply) => {
+    const { key } = req.body as { key?: string }
+    if (!key) {
+      reply.code(400)
+      return { ok: false, error: 'key is required' }
+    }
+    const r = await setKey(String(key))
+    if (!r.ok) {
+      reply.code(400)
+      return r
+    }
+    const prov = await upsertClaudeProvider()
+    return { ok: true, models: prov.models }
+  })
+
   // Begin a Claude sign-in: returns the URL to approve in the browser + an id to finish with.
   app.post('/api/auth/claude/start', async () => startLogin())
 

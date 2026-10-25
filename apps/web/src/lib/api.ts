@@ -204,7 +204,12 @@ export const api = {
   getModels: () => fetch('/api/models').then((r) => json<ModelRef[]>(r)),
   getUsage: (days?: number) =>
     fetch(`/api/usage${days ? `?days=${days}` : ''}`).then((r) => json<UsageStats>(r)),
-  // ---- Connect with Claude (Pro/Max subscription OAuth) ----
+  // ---- Connect with Claude (Pro/Max subscription) ----
+  // Primary path: hand the server a key the user pasted (OAuth token or API key).
+  setClaudeKey: (key: string) =>
+    fetch('/api/auth/claude/key', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ key }) }).then((r) =>
+      json<{ ok: boolean; error?: string; models?: ProviderModel[] }>(r),
+    ),
   startClaudeLogin: () =>
     fetch('/api/auth/claude/start', { method: 'POST' }).then((r) => json<{ url: string; pkceId: string }>(r)),
   completeClaudeLogin: (pkceId: string, code: string) =>

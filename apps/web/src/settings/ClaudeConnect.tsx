@@ -4,15 +4,14 @@ import { api } from '../lib/api'
 type Status = { connected: boolean; expiresAt?: number; scopes?: string; models?: { id: string }[] } | null
 
 /**
- * "Connect with Claude" — sign in with a Claude Pro/Max subscription (OAuth: approve in
- * the browser, paste the code back) and use its models in BlindHunter without an API key.
+ * "Connect with Claude" — use a Claude Pro/Max subscription by pasting the key you were
+ * given (an OAuth subscription token, or a plain Anthropic API key), so its models work in
+ * BlindHunter without per-token API billing.
  */
 export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
   const [status, setStatus] = useState<Status>(null)
   const [loading, setLoading] = useState(true)
-  const [awaitingCode, setAwaitingCode] = useState(false)
-  const [pkceId, setPkceId] = useState('')
-  const [code, setCode] = useState('')
+  const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -29,30 +28,17 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
     void refresh()
   }, [])
 
-  async function begin() {
-    setErr('')
-    try {
-      const { url, pkceId: id } = await api.startClaudeLogin()
-      setPkceId(id)
-      setAwaitingCode(true)
-      window.open(url, '_blank', 'noopener,noreferrer')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
-    }
-  }
-
-  async function finish() {
-    if (!code.trim()) return
+  async function connect() {
+    if (!key.trim()) return
     setBusy(true)
     setErr('')
     try {
-      const r = await api.completeClaudeLogin(pkceId, code.trim())
+      const r = await api.setClaudeKey(key.trim())
       if (!r.ok) {
         setErr(r.error ?? 'Could not connect.')
         return
       }
-      setCode('')
-      setAwaitingCode(false)
+      setKey('')
       await refresh()
       onChanged?.()
     } catch (e) {
@@ -100,44 +86,39 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
         <div className="conn-ico">✳</div>
         <div className="conn-info">
           <div className="conn-title">Connect with Claude</div>
-          <div className="conn-sub">Use your Claude Pro/Max subscription and its models — no API key needed.</div>
+          <div className="conn-sub">Paste your Claude key to use your Pro/Max subscription — no API-key billing.</div>
         </div>
-        {!awaitingCode && (
-          <button className="conn-go" onClick={begin}>
-            Connect →
-          </button>
-        )}
       </div>
 
-      {awaitingCode && (
-        <div className="conn-code">
-          <div className="conn-hint">Approve in the browser tab that opened, then paste the code you’re given:</div>
-          <div className="conn-code-row">
-            <input
-              className="conn-input"
-              placeholder="Paste code…"
-              value={code}
-              autoFocus
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void finish()
-              }}
-            />
-            <button className="conn-go" onClick={finish} disabled={busy || !code.trim()}>
-              {busy ? 'Connecting…' : 'Finish'}
-            </button>
-          </div>
-          <button className="conn-reopen" onClick={begin}>
-            Re-open the sign-in page
+      <div className="conn-code">
+        <div className="conn-hint">
+          Paste the key you were given (it starts with <code>sk-ant-</code>) and connect:
+        </div>
+        <div className="conn-code-row">
+          <input
+            className="conn-input"
+            type="password"
+            placeholder="sk-ant-…"
+            value={key}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => setKey(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void connect()
+            }}
+          />
+          <button className="conn-go" onClick={connect} disabled={busy || !key.trim()}>
+            {busy ? 'Connecting…' : 'Connect'}
           </button>
         </div>
-      )}
+      </div>
 
       {err && <div className="conn-err">{err}</div>}
 
       <div className="conn-note">
-        Uses the same browser sign-in as Claude Code (unofficial — Anthropic may change it). Your token is stored
-        encrypted on this machine and is sent only to Anthropic.
+        Works with a Claude subscription token or an Anthropic API key. Unofficial for subscription tokens — Anthropic
+        may change it, and routing a Pro/Max plan through a third-party app is against their terms. Your key is stored
+        owner-only on this machine and is sent only to Anthropic.
       </div>
     </div>
   )

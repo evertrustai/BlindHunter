@@ -1,5 +1,6 @@
 import type { ChatMessage, ContentPart, ToolCallRef } from '../agent/types.js'
 import type { StreamOpts, StreamDelta, ToolSchema } from './openai.js'
+import { isClaudeApiKey, anthropicAuthHeaders } from '../auth/claude.js'
 
 /**
  * Anthropic Messages API adapter, used for a connected Claude Pro/Max subscription
@@ -54,9 +55,10 @@ function assistantBlocks(m: ChatMessage): Block[] {
 }
 
 /** Convert OpenAI-style messages/tools into Anthropic Messages format. */
-function toAnthropic(messages: ChatMessage[], tools?: ToolSchema[]) {
-  // The oauth subscription path expects requests to look like Claude Code.
-  const systemParts: string[] = ["You are Claude Code, Anthropic's official CLI for Claude."]
+function toAnthropic(messages: ChatMessage[], tools?: ToolSchema[], spoofClaudeCode = true) {
+  // The oauth subscription path expects requests to look like Claude Code; a plain API
+  // key doesn't need (or want) that spoofed system line.
+  const systemParts: string[] = spoofClaudeCode ? ["You are Claude Code, Anthropic's official CLI for Claude."] : []
   const seq: AMessage[] = []
   for (const m of messages) {
     if (m.role === 'system') {
@@ -98,14 +100,14 @@ export async function* streamAnthropic(opts: StreamOpts): AsyncGenerator<StreamD
   if (!opts.apiKey) {
     throw new Error('Claude subscription not connected — reconnect it in Settings › Models.')
   }
-  const { system, messages, tools } = toAnthropic(opts.messages, opts.tools)
+  const usingApiKey = isClaudeApiKey(opts.apiKey)
+  const { system, messages, tools } = toAnthropic(opts.messages, opts.tools, !usingApiKey)
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${opts.apiKey}`,
       'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'oauth-2025-04-20',
+      ...anthropicAuthHeaders(opts.apiKey),
       ...(opts.headers ?? {}),
     },
     body: JSON.stringify({

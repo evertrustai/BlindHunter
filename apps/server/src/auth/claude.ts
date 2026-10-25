@@ -24,6 +24,19 @@ const REDIRECT_URI = 'https://console.anthropic.com/oauth/code/callback'
 const SCOPES = 'user:inference user:profile'
 const DEFAULT_TTL_SEC = 28_800 // 8h, per observed tokens
 
+/** A standard Anthropic API key (sk-ant-api…) authenticates with x-api-key; an OAuth
+ *  subscription token (sk-ant-oat…, from `claude setup-token` etc.) uses a Bearer header. */
+export function isClaudeApiKey(token: string): boolean {
+  return /^sk-ant-api/i.test(token.trim())
+}
+
+/** The auth headers Anthropic expects for a given credential (API key vs OAuth token). */
+export function anthropicAuthHeaders(token: string): Record<string, string> {
+  return isClaudeApiKey(token)
+    ? { 'x-api-key': token.trim() }
+    : { authorization: `Bearer ${token.trim()}`, 'anthropic-beta': 'oauth-2025-04-20' }
+}
+
 function b64url(buf: Buffer): string {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
@@ -83,6 +96,30 @@ export function startLogin(): { url: string; pkceId: string } {
   u.searchParams.set('code_challenge_method', 'S256')
   u.searchParams.set('state', state)
   return { url: u.toString(), pkceId }
+}
+
+/**
+ * Store a Claude credential the user pasted in directly — an OAuth subscription token
+ * (from `claude setup-token` or a tool's "Authorize" step) or a plain Anthropic API key.
+ * This is the primary "Connect with Claude" path: no browser round-trip or code exchange,
+ * the user just hands BlindHunter the key. We do a light check so a clearly-bad key is
+ * caught now, but accept anything the check can't rule out (some tokens can chat yet can't
+ * list models) and let the first real message report any remaining problem.
+ */
+export async function setKey(rawKey: string): Promise<{ ok: boolean; error?: string }> {
+  const key = rawKey.trim()
+  if (!key) return { ok: false, error: 'Paste your Claude key first.' }
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/models?limit=1', {
+      headers: { 'anthropic-version': '2023-06-01', ...anthropicAuthHeaders(key) },
+    })
+    if (res.status === 401) return { ok: false, error: 'Claude rejected that key — check you copied the whole thing.' }
+  } catch {
+    /* network hiccup — accept and let a real request surface it */
+  }
+  // A pasted key has no refresh token, so treat it as long-lived (re-paste if it ever expires).
+  await saveTokens({ accessToken: key, expiresAt: 0, scopes: 'pasted' })
+  return { ok: true }
 }
 
 /** Finish a login by exchanging the pasted code (format "code" or "code#state") for tokens. */
@@ -149,7 +186,8 @@ async function refresh(): Promise<boolean> {
 export async function getValidToken(): Promise<string | null> {
   await loadTokens()
   if (!tokens) return null
-  if (Date.now() > tokens.expiresAt - 60_000) await refresh()
+  // Only refresh an OAuth token (one that came with a refresh token); a pasted key has none.
+  if (tokens.refreshToken && Date.now() > tokens.expiresAt - 60_000) await refresh()
   return tokens?.accessToken ?? null
 }
 
@@ -168,11 +206,7 @@ export async function listModels(): Promise<{ id: string; name?: string }[]> {
   if (!token) return []
   try {
     const res = await fetch('https://api.anthropic.com/v1/models?limit=100', {
-      headers: {
-        authorization: `Bearer ${token}`,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'oauth-2025-04-20',
-      },
+      headers: { 'anthropic-version': '2023-06-01', ...anthropicAuthHeaders(token) },
     })
     if (!res.ok) return []
     const j = (await res.json()) as { data?: { id: string; display_name?: string }[] }
