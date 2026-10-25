@@ -221,6 +221,11 @@ export const api = {
       json<{ connected: boolean; expiresAt?: number; scopes?: string; models?: ProviderModel[] }>(r),
     ),
   disconnectClaude: () => fetch('/api/auth/claude/disconnect', { method: 'POST' }).then((r) => json<{ ok: boolean }>(r)),
+  // Re-fetch the model list for the connected subscription (e.g. once a fresh token warms up).
+  refreshClaudeModels: () =>
+    fetch('/api/auth/claude/refresh-models', { method: 'POST' }).then((r) =>
+      json<{ models?: ProviderModel[]; error?: string }>(r),
+    ),
   // ---- Telegram bot integration ----
   telegramStatus: () =>
     fetch('/api/telegram/status').then((r) =>

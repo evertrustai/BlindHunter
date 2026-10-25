@@ -17,6 +17,7 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
   const [busy, setBusy] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [showTerm, setShowTerm] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [err, setErr] = useState('')
 
   async function refresh() {
@@ -43,6 +44,8 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
           setStatus(st)
           setConnecting(false)
           onChanged?.()
+          // A just-minted token often can't list all models yet; re-fetch once it warms up.
+          window.setTimeout(() => void refreshModels(), 6000)
         }
       } catch {
         /* keep polling */
@@ -50,6 +53,21 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
     }, 2500)
     return () => window.clearInterval(t)
   }, [connecting, onChanged])
+
+  // Re-fetch the subscription's model list (a fresh token may only expose the fallback set
+  // until it fully activates).
+  async function refreshModels() {
+    setRefreshing(true)
+    try {
+      await api.refreshClaudeModels()
+      await refresh()
+      onChanged?.()
+    } catch {
+      /* ignore */
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   // Store the pasted key (an sk-ant-oat01 subscription token, or an sk-ant-api03 API key).
   async function connect() {
@@ -98,9 +116,14 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
             {n} model{n === 1 ? '' : 's'} available{exp ? ` · token valid until ${exp}` : ''}
           </div>
         </div>
-        <button className="conn-dis" onClick={disconnect} disabled={busy}>
-          {busy ? '…' : 'Disconnect'}
-        </button>
+        <div className="conn-actions">
+          <button className="conn-dis" onClick={refreshModels} disabled={refreshing} title="Re-check available models">
+            {refreshing ? '…' : 'Refresh models'}
+          </button>
+          <button className="conn-dis" onClick={disconnect} disabled={busy}>
+            {busy ? '…' : 'Disconnect'}
+          </button>
+        </div>
       </div>
     )
   }

@@ -1757,3 +1757,11 @@
   gap: 14px;
   margin-top: 10px;
 }
+
+/* ---------- Claude connected-card actions ---------- */
+.conn-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  align-items: center;
+}
