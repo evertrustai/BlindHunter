@@ -124,13 +124,23 @@ export async function* streamAnthropic(opts: StreamOpts): AsyncGenerator<StreamD
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => '')
     let msg = text.slice(0, 500)
+    let type = ''
     try {
-      const j = JSON.parse(text) as { error?: { message?: string } }
+      const j = JSON.parse(text) as { error?: { message?: string; type?: string } }
       msg = j.error?.message ?? msg
+      type = j.error?.type ?? ''
     } catch {
       /* keep raw text */
     }
-    throw new Error(`Provider error ${res.status}: ${msg}`)
+    // Anthropic returns a terse rate_limit_error ("Error") when it throttles a subscription
+    // token — usually the Claude Pro/Max usage limit for the current window, which resets on a
+    // rolling basis. Spell that out instead of surfacing the opaque body.
+    if (res.status === 429 || type === 'rate_limit_error') {
+      throw new Error(
+        'Claude is rate-limiting this request (429). Your Claude subscription usage limit for the current window is likely reached — it resets on a rolling basis, so wait a bit and try again. Note that Claude Code usage on the same plan counts toward the same limit.',
+      )
+    }
+    throw new Error(`Provider error ${res.status}: ${msg || type || 'request failed'}`)
   }
 
   const reader = res.body.getReader()
