@@ -12,6 +12,7 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
   const [status, setStatus] = useState<Status>(null)
   const [loading, setLoading] = useState(true)
   const [key, setKey] = useState('')
+  const [pkceId, setPkceId] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -28,17 +29,37 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
     void refresh()
   }, [])
 
+  // Step 1: open Claude's authorize page in the browser and remember this attempt's PKCE id.
+  async function authorize() {
+    setErr('')
+    try {
+      const { url, pkceId: id } = await api.startClaudeLogin()
+      setPkceId(id)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  // Step 2: take whatever Claude gave back — an sk-ant- key (store it directly) or the
+  // authorize code (exchange it, needs the pkceId from step 1).
   async function connect() {
-    if (!key.trim()) return
+    const val = key.trim()
+    if (!val) return
     setBusy(true)
     setErr('')
     try {
-      const r = await api.setClaudeKey(key.trim())
+      const r = val.startsWith('sk-ant-')
+        ? await api.setClaudeKey(val)
+        : pkceId
+          ? await api.completeClaudeLogin(pkceId, val)
+          : { ok: false as const, error: 'Click "Authorize with Claude" first, then paste the code it gives you.' }
       if (!r.ok) {
         setErr(r.error ?? 'Could not connect.')
         return
       }
       setKey('')
+      setPkceId('')
       await refresh()
       onChanged?.()
     } catch (e) {
@@ -86,19 +107,22 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
         <div className="conn-ico">✳</div>
         <div className="conn-info">
           <div className="conn-title">Connect with Claude</div>
-          <div className="conn-sub">Paste your Claude key to use your Pro/Max subscription — no API-key billing.</div>
+          <div className="conn-sub">Use your Claude Pro/Max subscription — no API-key billing.</div>
         </div>
+        <button className="conn-go" onClick={authorize}>
+          Authorize with Claude →
+        </button>
       </div>
 
       <div className="conn-code">
         <div className="conn-hint">
-          Paste the key you were given (it starts with <code>sk-ant-</code>) and connect:
+          Click <b>Authorize with Claude</b>, approve in the browser, then paste the key or code it gives you here:
         </div>
         <div className="conn-code-row">
           <input
             className="conn-input"
             type="password"
-            placeholder="sk-ant-…"
+            placeholder="Paste your key or code…"
             value={key}
             autoComplete="off"
             spellCheck={false}
@@ -110,6 +134,10 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
           <button className="conn-go" onClick={connect} disabled={busy || !key.trim()}>
             {busy ? 'Connecting…' : 'Connect'}
           </button>
+        </div>
+        <div className="conn-hint" style={{ marginTop: 6, opacity: 0.75 }}>
+          Already have a key (e.g. from <code>claude setup-token</code> or an Anthropic API key)? Paste it above and
+          Connect — no need to Authorize.
         </div>
       </div>
 
