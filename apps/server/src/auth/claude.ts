@@ -86,16 +86,21 @@ export function startLogin(): { url: string; pkceId: string } {
   for (const [k, v] of pending) if (Date.now() - v.createdAt > 15 * 60_000) pending.delete(k)
   pending.set(pkceId, { verifier, state, createdAt: Date.now() })
 
-  const u = new URL(AUTHORIZE_URL)
-  u.searchParams.set('code', 'true')
-  u.searchParams.set('client_id', CLIENT_ID)
-  u.searchParams.set('response_type', 'code')
-  u.searchParams.set('redirect_uri', REDIRECT_URI)
-  u.searchParams.set('scope', SCOPES)
-  u.searchParams.set('code_challenge', challenge)
-  u.searchParams.set('code_challenge_method', 'S256')
-  u.searchParams.set('state', state)
-  return { url: u.toString(), pkceId }
+  const params = new URLSearchParams({
+    code: 'true',
+    client_id: CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPES,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state,
+  })
+  // claude.ai's authorize endpoint rejects "+"-encoded spaces in `scope` as "Invalid
+  // request format" — it requires %20. URLSearchParams encodes spaces as "+", so convert
+  // them. (None of our other values contain a literal "+", so a blanket replace is safe.)
+  const url = `${AUTHORIZE_URL}?${params.toString().replace(/\+/g, '%20')}`
+  return { url, pkceId }
 }
 
 /**

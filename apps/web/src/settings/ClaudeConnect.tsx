@@ -12,7 +12,6 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
   const [status, setStatus] = useState<Status>(null)
   const [loading, setLoading] = useState(true)
   const [key, setKey] = useState('')
-  const [pkceId, setPkceId] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -29,37 +28,19 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
     void refresh()
   }, [])
 
-  // Step 1: open Claude's authorize page in the browser and remember this attempt's PKCE id.
-  async function authorize() {
-    setErr('')
-    try {
-      const { url, pkceId: id } = await api.startClaudeLogin()
-      setPkceId(id)
-      window.open(url, '_blank', 'noopener,noreferrer')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
-    }
-  }
-
-  // Step 2: take whatever Claude gave back — an sk-ant- key (store it directly) or the
-  // authorize code (exchange it, needs the pkceId from step 1).
+  // Store the pasted key (an sk-ant-oat01 subscription token, or an sk-ant-api03 API key).
   async function connect() {
     const val = key.trim()
     if (!val) return
     setBusy(true)
     setErr('')
     try {
-      const r = val.startsWith('sk-ant-')
-        ? await api.setClaudeKey(val)
-        : pkceId
-          ? await api.completeClaudeLogin(pkceId, val)
-          : { ok: false as const, error: 'Click "Authorize with Claude" first, then paste the code it gives you.' }
+      const r = await api.setClaudeKey(val)
       if (!r.ok) {
         setErr(r.error ?? 'Could not connect.')
         return
       }
       setKey('')
-      setPkceId('')
       await refresh()
       onChanged?.()
     } catch (e) {
@@ -107,22 +88,19 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
         <div className="conn-ico">✳</div>
         <div className="conn-info">
           <div className="conn-title">Connect with Claude</div>
-          <div className="conn-sub">Use your Claude Pro/Max subscription — no API-key billing.</div>
+          <div className="conn-sub">Paste a Claude subscription token or an Anthropic API key.</div>
         </div>
-        <button className="conn-go" onClick={authorize}>
-          Authorize with Claude →
-        </button>
       </div>
 
       <div className="conn-code">
         <div className="conn-hint">
-          Click <b>Authorize with Claude</b>, approve in the browser, then paste the key or code it gives you here:
+          Paste your Claude key (it starts with <code>sk-ant-</code>) and connect:
         </div>
         <div className="conn-code-row">
           <input
             className="conn-input"
             type="password"
-            placeholder="Paste your key or code…"
+            placeholder="sk-ant-…"
             value={key}
             autoComplete="off"
             spellCheck={false}
@@ -135,18 +113,20 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
             {busy ? 'Connecting…' : 'Connect'}
           </button>
         </div>
-        <div className="conn-hint" style={{ marginTop: 6, opacity: 0.75 }}>
-          Already have a key (e.g. from <code>claude setup-token</code> or an Anthropic API key)? Paste it above and
-          Connect — no need to Authorize.
+        <div className="conn-hint" style={{ marginTop: 8, opacity: 0.8, lineHeight: 1.6 }}>
+          How to get a key:
+          <br />• <b>Subscription (Pro/Max):</b> run <code>claude setup-token</code> in a terminal and paste the{' '}
+          <code>sk-ant-oat01-…</code> token it prints.
+          <br />• <b>API key:</b> create one at <code>console.anthropic.com</code> and paste the{' '}
+          <code>sk-ant-api03-…</code> key.
         </div>
       </div>
 
       {err && <div className="conn-err">{err}</div>}
 
       <div className="conn-note">
-        Works with a Claude subscription token or an Anthropic API key. Unofficial for subscription tokens — Anthropic
-        may change it, and routing a Pro/Max plan through a third-party app is against their terms. Your key is stored
-        owner-only on this machine and is sent only to Anthropic.
+        Your key is stored owner-only on this machine and is sent only to Anthropic. Using a Pro/Max subscription token
+        with a third-party app is against Anthropic's terms and unofficial — an API key is the supported option.
       </div>
     </div>
   )
