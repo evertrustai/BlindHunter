@@ -296,6 +296,8 @@ export function App() {
             session={session}
             model={session.model || selectedModel || ''}
             models={models}
+            running={sessions.find((s) => s.id === session.id)?.running}
+            lastActivity={sessions.find((s) => s.id === session.id)?.updatedAt}
             initialPrompt={pending}
             initialImages={pendingImages}
             onConsumePrompt={() => {

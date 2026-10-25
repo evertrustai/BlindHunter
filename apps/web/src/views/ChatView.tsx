@@ -185,6 +185,12 @@ interface ChatViewProps {
   session: Session
   model: string
   models: ModelRef[]
+  /** Server-side run-active flag for this session (polled), so the view can attach to
+   *  runs started elsewhere — e.g. from the Telegram bot. */
+  running?: boolean
+  /** Session updatedAt (polled); when it advances while idle, the transcript is
+   *  reloaded so replies from Telegram (or another client) show without a refresh. */
+  lastActivity?: number
   initialPrompt: string | null
   initialImages?: string[]
   onConsumePrompt: () => void
@@ -204,6 +210,8 @@ export function ChatView({
   session,
   model,
   models,
+  running,
+  lastActivity,
   initialPrompt,
   initialImages,
   onConsumePrompt,
@@ -410,8 +418,8 @@ export function ChatView({
       void send(initialPrompt ?? '', initialImages)
       onConsumePrompt()
     } else {
-      void loadHistory().then((running) => {
-        if (running) void reconnect()
+      void loadHistory().then((wasRunning) => {
+        if (wasRunning) void reconnect()
       })
     }
     // On unmount (e.g. switching sessions) just disconnect from the stream — the
@@ -421,6 +429,28 @@ export function ChatView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Attach to a run that STARTED on this session from elsewhere (e.g. the Telegram bot)
+  // so its reply streams into the open chat without a manual refresh. Triggered when the
+  // polled `running` flag flips on while we're idle (our own runs already stream live).
+  const prevRunning = useRef(false)
+  useEffect(() => {
+    if (running && !prevRunning.current && !streaming && started.current) void reconnect()
+    prevRunning.current = Boolean(running)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, streaming])
+
+  // Catch-all: when a turn completes elsewhere (e.g. a quick Telegram reply too fast for
+  // the run poll to attach to), the session's updatedAt advances — reload the transcript
+  // so it shows without a manual refresh. loadHistory replaces items, so this can't dupe.
+  const seenActivity = useRef(session.updatedAt)
+  useEffect(() => {
+    if (lastActivity && lastActivity !== seenActivity.current) {
+      seenActivity.current = lastActivity
+      if (!streaming && started.current) void loadHistory()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastActivity, streaming])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' })
