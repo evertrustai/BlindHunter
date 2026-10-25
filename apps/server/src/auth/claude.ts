@@ -111,16 +111,21 @@ export function startLogin(): { url: string; pkceId: string } {
  * caught now, but accept anything the check can't rule out (some tokens can chat yet can't
  * list models) and let the first real message report any remaining problem.
  */
-export async function setKey(rawKey: string): Promise<{ ok: boolean; error?: string }> {
+export async function setKey(rawKey: string, opts?: { validate?: boolean }): Promise<{ ok: boolean; error?: string }> {
   const key = rawKey.trim()
   if (!key) return { ok: false, error: 'Paste your Claude key first.' }
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/models?limit=1', {
-      headers: { 'anthropic-version': '2023-06-01', ...anthropicAuthHeaders(key) },
-    })
-    if (res.status === 401) return { ok: false, error: 'Claude rejected that key — check you copied the whole thing.' }
-  } catch {
-    /* network hiccup — accept and let a real request surface it */
+  // Validate a manually-pasted key (catch typos). Skip it for a token `claude setup-token`
+  // just minted — it's known-good, and its user:inference scope can make /v1/models 401 even
+  // though the token works for inference. (opts.validate === false)
+  if (opts?.validate !== false) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/models?limit=1', {
+        headers: { 'anthropic-version': '2023-06-01', ...anthropicAuthHeaders(key) },
+      })
+      if (res.status === 401) return { ok: false, error: 'Claude rejected that key — check you copied the whole thing.' }
+    } catch {
+      /* network hiccup — accept and let a real request surface it */
+    }
   }
   // A pasted key has no refresh token, so treat it as long-lived (re-paste if it ever expires).
   await saveTokens({ accessToken: key, expiresAt: 0, scopes: 'pasted' })

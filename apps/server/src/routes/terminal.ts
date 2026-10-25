@@ -20,7 +20,10 @@ type WsSocket = SocketStream['socket']
 /** Store a captured token and register the subscription provider; report into the terminal. */
 async function storeToken(ws: WsSocket, token: string): Promise<void> {
   try {
-    const r = await setKey(token)
+    // setup-token just created this token, so trust it (skip the /v1/models re-check, which
+    // a user:inference-scoped token can fail). Log only the length — never the token.
+    console.error(`[setup-token] captured token (length ${token.length})`)
+    const r = await setKey(token, { validate: false })
     if (r.ok) {
       await upsertClaudeProvider()
       ws.send('\r\n\x1b[32m[BlindHunter] Token captured — Claude subscription connected. You can close this terminal.\x1b[0m\r\n')
