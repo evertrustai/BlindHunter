@@ -216,6 +216,30 @@ export const api = {
       json<{ connected: boolean; expiresAt?: number; scopes?: string; models?: ProviderModel[] }>(r),
     ),
   disconnectClaude: () => fetch('/api/auth/claude/disconnect', { method: 'POST' }).then((r) => json<{ ok: boolean }>(r)),
+  // ---- Telegram bot integration ----
+  telegramStatus: () =>
+    fetch('/api/telegram/status').then((r) =>
+      json<{
+        enabled: boolean
+        hasToken: boolean
+        botUsername?: string
+        paired: boolean
+        ownerId?: number
+        pairingCode?: string
+        defaultModel?: string
+        defaultWorkspace?: string
+      }>(r),
+    ),
+  telegramConnect: (token: string) =>
+    fetch('/api/telegram/connect', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ token }) }).then((r) =>
+      json<{ ok?: boolean; botUsername?: string; pairingCode?: string; error?: string }>(r),
+    ),
+  telegramRepair: () => fetch('/api/telegram/repair', { method: 'POST' }).then((r) => json<{ pairingCode?: string; error?: string }>(r)),
+  telegramSettings: (patch: { defaultModel?: string; defaultWorkspace?: string }) =>
+    fetch('/api/telegram/settings', { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify(patch) }).then((r) =>
+      json<{ ok: boolean }>(r),
+    ),
+  telegramDisconnect: () => fetch('/api/telegram/disconnect', { method: 'POST' }).then((r) => json<{ ok: boolean }>(r)),
   listDir: (path?: string) =>
     fetch(`/api/fs/list${path ? `?path=${encodeURIComponent(path)}` : ''}`).then((r) => json<FsList>(r)),
   pickFolder: () =>

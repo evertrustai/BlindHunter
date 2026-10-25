@@ -48,6 +48,22 @@ export interface Settings {
   /** "providerId/modelId" */
   defaultModel?: string
   providers: Provider[]
+  /** Telegram bot integration (the bot TOKEN lives in the credentials vault, not here). */
+  telegram?: TelegramConfig
+}
+
+export interface TelegramConfig {
+  enabled: boolean
+  /** Telegram user id bound as the sole owner once paired. */
+  ownerId?: number
+  /** One-time code the owner sends to the bot to claim it (cleared after pairing). */
+  pairingCode?: string
+  /** The connected bot's @username (from getMe), for display. */
+  botUsername?: string
+  /** "providerId/modelId" used for Telegram-driven runs. */
+  defaultModel?: string
+  /** Workspace folder Telegram-driven runs operate in. */
+  defaultWorkspace?: string
 }
 
 /** providerId -> API key. Stored separately from settings, owner-only. */

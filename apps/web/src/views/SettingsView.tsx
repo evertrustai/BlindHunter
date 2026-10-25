@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { GeneralPane } from '../settings/GeneralPane'
 import { ModelsPane } from '../settings/ModelsPane'
 import { PermissionsPane } from '../settings/PermissionsPane'
+import { IntegrationsPane } from '../settings/IntegrationsPane'
 import { ImportPane } from '../settings/ImportPane'
 import { PluginsPane } from '../settings/PluginsPane'
 import { DeveloperPane } from '../settings/DeveloperPane'
@@ -13,6 +14,7 @@ const TABS: { id: SettingsTabId; label: string; icon: string }[] = [
   { id: 'general', label: 'General', icon: '◐' },
   { id: 'models', label: 'Models', icon: '▤' },
   { id: 'permissions', label: 'Permissions', icon: '🛡' },
+  { id: 'integrations', label: 'Integrations', icon: '⌁' },
   { id: 'import', label: 'Import', icon: '⤓' },
   { id: 'plugins', label: 'Plugins', icon: '⧉' },
   { id: 'developer', label: 'Developer', icon: '⌘' },
@@ -57,6 +59,7 @@ export function SettingsView({ onClose, onDataChanged, initialTab }: SettingsVie
           {tab === 'general' && <GeneralPane />}
           {tab === 'models' && <ModelsPane />}
           {tab === 'permissions' && <PermissionsPane />}
+          {tab === 'integrations' && <IntegrationsPane />}
           {tab === 'import' && <ImportPane onDataChanged={onDataChanged} />}
           {tab === 'plugins' && <PluginsPane />}
           {tab === 'developer' && <DeveloperPane />}

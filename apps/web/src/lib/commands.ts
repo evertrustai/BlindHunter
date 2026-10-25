@@ -1,5 +1,13 @@
 /** Settings tabs a slash command can jump to (kept here so both App and Composer/ChatView can reference it without a views→components dependency). */
-export type SettingsTabId = 'general' | 'models' | 'permissions' | 'import' | 'plugins' | 'developer' | 'about'
+export type SettingsTabId =
+  | 'general'
+  | 'models'
+  | 'permissions'
+  | 'integrations'
+  | 'import'
+  | 'plugins'
+  | 'developer'
+  | 'about'
 
 export interface SlashCommand {
   id: string

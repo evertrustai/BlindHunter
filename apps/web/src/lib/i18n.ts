@@ -30,6 +30,7 @@ const dict: Record<string, Partial<Record<Target, string>>> = {
   Permissions: { es: 'Permisos', fr: 'Autorisations', de: 'Berechtigungen', pt: 'Permissões', ru: 'Разрешения', ar: 'الأذونات', zh: '权限', ja: '権限', hi: 'अनुमतियाँ' },
   Import: { es: 'Importar', fr: 'Importer', de: 'Importieren', pt: 'Importar', ru: 'Импорт', ar: 'استيراد', zh: '导入', ja: 'インポート', hi: 'आयात' },
   Developer: { es: 'Desarrollador', fr: 'Développeur', de: 'Entwickler', pt: 'Desenvolvedor', ru: 'Разработчик', ar: 'المطور', zh: '开发者', ja: '開発者', hi: 'डेवलपर' },
+  Integrations: { es: 'Integraciones', fr: 'Intégrations', de: 'Integrationen', pt: 'Integrações', ru: 'Интеграции', ar: 'التكاملات', zh: '集成', ja: '連携', hi: 'एकीकरण' },
   About: { es: 'Acerca de', fr: 'À propos', de: 'Über', pt: 'Sobre', ru: 'О программе', ar: 'حول', zh: '关于', ja: '概要', hi: 'परिचय' },
 
   // ---- general pane ----

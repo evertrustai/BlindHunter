@@ -1,5 +1,6 @@
 import { buildApp } from './app.js'
 import { shutdown as shutdownBrowser } from './browser/manager.js'
+import { stopBot } from './telegram/bot.js'
 
 const PORT = Number(process.env.PORT ?? 8787)
 const HOST = process.env.HOST ?? '127.0.0.1'
@@ -23,6 +24,11 @@ async function gracefulExit(signal: string): Promise<void> {
   app.log.info(`received ${signal} — shutting down`)
   const force = setTimeout(() => process.exit(0), 3000)
   force.unref()
+  try {
+    stopBot()
+  } catch {
+    /* ignore */
+  }
   try {
     await shutdownBrowser()
   } catch {

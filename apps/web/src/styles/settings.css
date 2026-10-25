@@ -1084,3 +1084,20 @@ a.ab-v:hover {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* ---- Settings › Integrations: Telegram ---- */
+.conn-ico.tg {
+  background: #229ed9;
+}
+.conn-sub a {
+  color: var(--amber-2);
+  text-decoration: underline;
+}
+.tg-code {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  color: var(--txt);
+  margin: 16px 0 6px;
+}

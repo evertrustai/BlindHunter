@@ -11,6 +11,7 @@ import { mcpRoutes } from './routes/mcp.js'
 import { browserRoutes } from './routes/browser.js'
 import { usageRoutes } from './routes/usage.js'
 import { authRoutes } from './routes/auth.js'
+import { telegramRoutes } from './routes/telegram.js'
 import { loadSessionsFromDisk, loadGroupsFromDisk } from './sessions/store.js'
 import { loadAgentsFromDisk } from './agents/store.js'
 import { loadMcpFromDisk } from './mcp/store.js'
@@ -105,6 +106,7 @@ export async function buildApp() {
   await browserRoutes(app)
   await usageRoutes(app)
   await authRoutes(app)
+  await telegramRoutes(app)
   await systemRoutes(app)
 
   return app
