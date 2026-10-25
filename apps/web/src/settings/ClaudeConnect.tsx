@@ -16,6 +16,7 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [showTerm, setShowTerm] = useState(false)
   const [err, setErr] = useState('')
 
   async function refresh() {
@@ -123,14 +124,31 @@ export function ClaudeConnect({ onChanged }: { onChanged?: () => void }) {
 
       {connecting ? (
         <div className="conn-setup">
-          <div className="conn-hint">
-            A browser opened — click <b>Authorize</b>. When your token appears below it's captured and stored
-            automatically. (If Claude asks for a code, paste it into this terminal.)
+          <div className="conn-connecting">
+            <span className="conn-spin" />
+            <span>
+              A browser opened — click <b>Authorize</b>. You'll be connected automatically, no copying needed.
+            </span>
           </div>
-          <SetupTokenTerminal />
-          <button className="conn-reopen" onClick={() => setConnecting(false)}>
-            Cancel
-          </button>
+          <div className="conn-setup-actions">
+            <button className="conn-reopen" onClick={() => setShowTerm((s) => !s)}>
+              {showTerm ? 'Hide terminal' : 'Show terminal'}
+            </button>
+            <button
+              className="conn-reopen"
+              onClick={() => {
+                setConnecting(false)
+                setShowTerm(false)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          {/* The shell runs in the background (the server captures the token); the terminal is
+              kept mounted but hidden, and only shown if Claude asks the user to paste a code. */}
+          <div style={{ display: showTerm ? 'block' : 'none' }}>
+            <SetupTokenTerminal />
+          </div>
         </div>
       ) : (
         <div className="conn-code">

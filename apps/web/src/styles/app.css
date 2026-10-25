@@ -1727,3 +1727,33 @@
 .setup-term .xterm {
   height: 100%;
 }
+
+/* ---------- Claude connect: background "connecting" status ---------- */
+.conn-connecting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--txt-2);
+  line-height: 1.5;
+}
+.conn-spin {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--line-2);
+  border-top-color: var(--amber-2);
+  border-radius: 50%;
+  animation: conn-spin 0.8s linear infinite;
+}
+@keyframes conn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.conn-setup-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+}
