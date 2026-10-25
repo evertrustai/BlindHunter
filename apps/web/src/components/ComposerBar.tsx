@@ -34,6 +34,8 @@ interface ComposerBarProps {
   onMic?: () => void
   micActive?: boolean
   onBrowser?: () => void
+  /** Toggle the interactive terminal side panel. */
+  onTerminal?: () => void
   /** Number of terminal commands the agent has run this turn. */
   terminals?: number
   running?: boolean
@@ -53,6 +55,7 @@ export function ComposerBar({
   onMic,
   micActive,
   onBrowser,
+  onTerminal,
   terminals = 0,
   running = false,
 }: ComposerBarProps) {
@@ -96,6 +99,11 @@ export function ComposerBar({
         {onBrowser && (
           <button className="icobtn" aria-label="Open in-app browser" title="In-app browser" onClick={onBrowser}>
             🌐
+          </button>
+        )}
+        {onTerminal && (
+          <button className="icobtn" aria-label="Toggle terminal" title="Terminal" onClick={onTerminal}>
+            <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>&gt;_</span>
           </button>
         )}
       </div>

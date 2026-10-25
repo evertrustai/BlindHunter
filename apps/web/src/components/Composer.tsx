@@ -27,6 +27,7 @@ interface ComposerProps {
   agents: Agent[]
   onOpenAgents?: (kind: 'agent' | 'subagent') => void
   onBrowser?: () => void
+  onTerminal?: () => void
 }
 
 // No session exists yet here, so "new-session" doesn't apply.
@@ -48,6 +49,7 @@ export function Composer({
   agents,
   onOpenAgents,
   onBrowser,
+  onTerminal,
 }: ComposerProps) {
   const t = useT()
   const c = useComposer()
@@ -201,6 +203,7 @@ export function Composer({
         onMic={c.toggleMic}
         micActive={c.listening}
         onBrowser={onBrowser}
+        onTerminal={onTerminal}
       />
     </div>
   )

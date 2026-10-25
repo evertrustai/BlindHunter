@@ -204,6 +204,7 @@ interface ChatViewProps {
   agents: Agent[]
   onOpenAgents?: (kind: 'agent' | 'subagent') => void
   onBrowser?: () => void
+  onTerminal?: () => void
 }
 
 export function ChatView({
@@ -225,6 +226,7 @@ export function ChatView({
   agents,
   onOpenAgents,
   onBrowser,
+  onTerminal,
 }: ChatViewProps) {
   const [items, setItems] = useState<Item[]>([])
   const [streaming, setStreaming] = useState(false)
@@ -656,6 +658,7 @@ export function ChatView({
             onMic={c.toggleMic}
             micActive={c.listening}
             onBrowser={onBrowser}
+            onTerminal={onTerminal}
             terminals={cmdCount}
             running={streaming}
           />

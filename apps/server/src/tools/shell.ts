@@ -24,7 +24,7 @@ export function resolveShellKind(agentEnvironment?: string, terminalShell?: stri
 }
 
 /** Locate Git-for-Windows bash.exe, falling back to PATH `bash`. */
-function gitBashPath(): string {
+export function gitBashPath(): string {
   const pf = process.env.ProgramFiles ?? 'C:\\Program Files'
   const pf86 = process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)'
   const candidates = [`${pf}\\Git\\bin\\bash.exe`, `${pf}\\Git\\usr\\bin\\bash.exe`, `${pf86}\\Git\\bin\\bash.exe`]

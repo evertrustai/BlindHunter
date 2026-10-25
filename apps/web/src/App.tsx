@@ -5,6 +5,7 @@ import { ChatView } from './views/ChatView'
 import { BrowserView } from './views/BrowserView'
 import { SettingsView } from './views/SettingsView'
 import { AgentsManager } from './components/AgentsManager'
+import { TerminalPanel } from './components/TerminalPanel'
 import { BypassModal } from './components/Modal'
 import { api } from './lib/api'
 import { applyLanguage, applyTheme } from './lib/appearance'
@@ -55,6 +56,13 @@ export function App() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [agentsView, setAgentsView] = useState<'agent' | 'subagent' | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // Interactive terminal side panel (toggled from the composer's terminal button).
+  const [terminalOpen, setTerminalOpen] = useState(false)
+  const [termWidth, setTermWidth] = useState<number>(() => {
+    const n = Number(loadLS('bh.termWidth'))
+    return n >= 320 && n <= 2000 ? n : 480
+  })
+  useEffect(() => saveLS('bh.termWidth', String(termWidth)), [termWidth])
   const [models, setModels] = useState<ModelRef[]>([])
   // Console selections persist across refresh/restart. Sessions keep their OWN
   // workspace (stored server-side), so this is only the default for new sessions.
@@ -245,8 +253,18 @@ export function App() {
     }
   }
 
+  // The terminal opens in the active session's workspace, or the console's selected one.
+  const termCwd = view === 'chat' && session ? session.workspace : workspace
+
   return (
-    <div className={sidebarCollapsed ? 'app collapsed' : 'app'}>
+    <div
+      className={sidebarCollapsed ? 'app collapsed' : 'app'}
+      style={
+        terminalOpen
+          ? { gridTemplateColumns: `${sidebarCollapsed ? '' : '264px '}minmax(0, 1fr) ${termWidth}px` }
+          : undefined
+      }
+    >
       {sidebarCollapsed ? (
         <button className="expand-side" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}>
           ⟩⟨
@@ -288,6 +306,7 @@ export function App() {
             agents={agents}
             onOpenAgents={setAgentsView}
             onBrowser={() => setView('browser')}
+            onTerminal={() => setTerminalOpen((v) => !v)}
           />
         )}
         {view === 'chat' && session && (
@@ -314,6 +333,7 @@ export function App() {
             agents={agents}
             onOpenAgents={setAgentsView}
             onBrowser={() => setView('browser')}
+            onTerminal={() => setTerminalOpen((v) => !v)}
           />
         )}
         {view === 'browser' && <BrowserView onClose={() => setView(session ? 'chat' : 'console')} />}
@@ -331,6 +351,14 @@ export function App() {
           />
         )}
       </main>
+
+      <TerminalPanel
+        open={terminalOpen}
+        cwd={termCwd}
+        width={termWidth}
+        onWidth={setTermWidth}
+        onClose={() => setTerminalOpen(false)}
+      />
 
       {agentsView && (
         <AgentsManager

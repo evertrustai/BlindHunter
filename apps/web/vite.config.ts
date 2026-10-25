@@ -8,8 +8,9 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 7331,
     proxy: {
-      // Forward API calls to the BlindHunter server in dev.
-      '/api': { target: 'http://127.0.0.1:8787', changeOrigin: true },
+      // Forward API calls to the BlindHunter server in dev. ws:true so the interactive
+      // terminal's WebSocket (/api/terminal/ws) upgrade is proxied too.
+      '/api': { target: 'http://127.0.0.1:8787', changeOrigin: true, ws: true },
     },
   },
 })

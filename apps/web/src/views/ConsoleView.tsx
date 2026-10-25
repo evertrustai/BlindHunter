@@ -17,6 +17,7 @@ interface ConsoleViewProps {
   agents: Agent[]
   onOpenAgents?: (kind: 'agent' | 'subagent') => void
   onBrowser?: () => void
+  onTerminal?: () => void
 }
 
 /** The empty "new session" landing screen. */
