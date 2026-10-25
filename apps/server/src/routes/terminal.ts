@@ -11,8 +11,9 @@ import { upsertClaudeProvider } from './auth.js'
 const CMD_SETUP_TOKEN = 'claude-setup-token'
 // Strip ANSI/OSC escape sequences so the token/prompt can be matched in the raw PTY stream.
 const ANSI = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g
-// A Claude OAuth subscription token (sk-ant-oat01-…) printed by `claude setup-token`.
-const TOKEN_RE = /sk-ant-oat01-[A-Za-z0-9_-]{20,}/
+// A Claude OAuth subscription token (sk-ant-oat01-…) printed by `claude setup-token`. The
+// high minimum length avoids ever matching a wrapped fragment as if it were the whole token.
+const TOKEN_RE = /sk-ant-oat01-[A-Za-z0-9_-]{40,}/
 
 type WsSocket = SocketStream['socket']
 
@@ -65,7 +66,12 @@ export async function terminalRoutes(app: FastifyInstance): Promise<void> {
 
     let term
     try {
-      term = spawnTerminal(kind, q.cwd || '', Number(q.cols) || 80, Number(q.rows) || 24)
+      // setup-token runs at a fixed wide width (and ignores client resizes, below) so the
+      // ~110-char token prints on one line — a narrow/hidden terminal would reflow it across
+      // lines and break the server-side capture.
+      term = setupMode
+        ? spawnTerminal(kind, q.cwd || '', 512, 40)
+        : spawnTerminal(kind, q.cwd || '', Number(q.cols) || 80, Number(q.rows) || 24)
     } catch (e) {
       try {
         ws.send(`\r\n\x1b[31mCould not start a shell: ${e instanceof Error ? e.message : String(e)}\x1b[0m\r\n`)
@@ -132,7 +138,9 @@ export async function terminalRoutes(app: FastifyInstance): Promise<void> {
         return
       }
       if (msg.t === 'i' && typeof msg.d === 'string') term.write(msg.d)
-      else if (msg.t === 'r') term.resize(Math.max(1, Number(msg.c) || 80), Math.max(1, Number(msg.r) || 24))
+      // Ignore client resizes in setup-token mode — the PTY stays at its fixed wide width so
+      // the token never wraps (see spawn above).
+      else if (msg.t === 'r' && !setupMode) term.resize(Math.max(1, Number(msg.c) || 80), Math.max(1, Number(msg.r) || 24))
     })
 
     const stop = () => {
