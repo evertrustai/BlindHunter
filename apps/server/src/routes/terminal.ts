@@ -11,19 +11,19 @@ import { upsertClaudeProvider } from './auth.js'
 const CMD_SETUP_TOKEN = 'claude-setup-token'
 // Strip ANSI/OSC escape sequences so the token/prompt can be matched in the raw PTY stream.
 const ANSI = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g
-// A Claude OAuth subscription token (sk-ant-oat01-…) printed by `claude setup-token`. The
-// high minimum length avoids ever matching a wrapped fragment as if it were the whole token.
-const TOKEN_RE = /sk-ant-oat01-[A-Za-z0-9_-]{40,}/
+// A Claude OAuth subscription token (sk-ant-oat01-…) printed by `claude setup-token`. Matched
+// against the RAW stream (not ANSI-stripped) so the trailing escape/color-reset bounds the
+// token — stripping ANSI first merges it with the following word (e.g. "…QAAStore"). The
+// trailing lookahead requires a non-token char to have arrived, so a token split across chunks
+// isn't captured half-formed; the high minimum length rejects a stray fragment.
+const TOKEN_RE = /sk-ant-oat01-[A-Za-z0-9_-]{40,}(?=[^A-Za-z0-9_-])/
 
 type WsSocket = SocketStream['socket']
 
 /** Store a captured token and register the subscription provider; report into the terminal. */
 async function storeToken(ws: WsSocket, token: string): Promise<void> {
   try {
-    // setup-token just created this token, so trust it (skip the /v1/models re-check, which
-    // a user:inference-scoped token can fail). Log only the length — never the token.
-    console.error(`[setup-token] captured token (length ${token.length})`)
-    const r = await setKey(token, { validate: false })
+    const r = await setKey(token)
     if (r.ok) {
       await upsertClaudeProvider()
       ws.send('\r\n\x1b[32m[BlindHunter] Token captured — Claude subscription connected. You can close this terminal.\x1b[0m\r\n')
@@ -118,7 +118,8 @@ export async function terminalRoutes(app: FastifyInstance): Promise<void> {
         return
       }
       if (!captured) {
-        const m = clean.match(TOKEN_RE)
+        // Match the RAW buffer (not `clean`): the ANSI reset after the token is the boundary.
+        const m = capBuf.match(TOKEN_RE)
         if (m) {
           captured = true
           void storeToken(ws, m[0])
