@@ -24,6 +24,7 @@ import { mcpExtraTools } from '../mcp/manager.js'
 import { startRun, subscribe, stopRun, isRunning } from '../agent/runs.js'
 import { recordUsage } from '../usage/store.js'
 import { getValidToken } from '../auth/claude.js'
+import { getValidToken as getCodexToken, getAccountId as getCodexAccountId } from '../auth/codex.js'
 import type { ChatMessage, AgentEvent } from '../agent/types.js'
 
 /** First @mention of a known top-level agent in a message, e.g. "@recon". */
@@ -171,12 +172,27 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     }
     const contextWindow = provider.models.find((m) => m.id === modelId)?.contextWindow ?? provider.defaultContext ?? 0
 
-    // A connected Claude subscription authenticates with its managed OAuth token (auto-
-    // refreshed), not a stored API key, and talks the Anthropic protocol.
-    const apiKey = provider.protocol === 'anthropic' ? ((await getValidToken()) ?? undefined) : creds[providerId]
-    if (provider.protocol === 'anthropic' && !apiKey) {
-      reply.code(400)
-      return { error: 'Your Claude subscription is not connected — connect it in Settings › Models.' }
+    // Managed subscription auth: Claude uses an OAuth token (Anthropic protocol); ChatGPT
+    // (Codex) uses an OAuth token + a chatgpt-account-id header (Codex protocol). Everything
+    // else authenticates with its stored API key.
+    let apiKey: string | undefined
+    let managedHeaders: Record<string, string> | undefined
+    if (provider.protocol === 'anthropic') {
+      apiKey = (await getValidToken()) ?? undefined
+      if (!apiKey) {
+        reply.code(400)
+        return { error: 'Your Claude subscription is not connected — connect it in Settings › Models.' }
+      }
+    } else if (provider.protocol === 'codex') {
+      apiKey = (await getCodexToken()) ?? undefined
+      if (!apiKey) {
+        reply.code(400)
+        return { error: 'Your ChatGPT subscription is not connected — connect it in Settings › Models.' }
+      }
+      const accountId = await getCodexAccountId()
+      if (accountId) managedHeaders = { 'chatgpt-account-id': accountId }
+    } else {
+      apiKey = creds[providerId]
     }
 
     // Remember the model chosen for this turn so reopening the session keeps it. (QA-18)
@@ -219,7 +235,7 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       baseUrl: provider.baseUrl,
       apiKey,
       protocol: provider.protocol,
-      headers: provider.headers,
+      headers: managedHeaders ? { ...provider.headers, ...managedHeaders } : provider.headers,
       model: modelId,
       cwd: session.workspace,
       history: session.messages,

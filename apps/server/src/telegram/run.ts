@@ -7,6 +7,7 @@ import { startRun, subscribe, stopRun, isRunning } from '../agent/runs.js'
 import { createSession, getSession, addMessages } from '../sessions/store.js'
 import { recordUsage } from '../usage/store.js'
 import { getValidToken } from '../auth/claude.js'
+import { getValidToken as getCodexToken, getAccountId as getCodexAccountId } from '../auth/codex.js'
 import type { ChatMessage, AgentEvent } from '../agent/types.js'
 import { homedir } from 'node:os'
 
@@ -55,10 +56,24 @@ export async function runTelegramTurn(chatId: number, text: string, cb: TurnCall
   }
 
   const creds = await loadCredentials()
-  const apiKey = provider.protocol === 'anthropic' ? ((await getValidToken()) ?? undefined) : creds[providerId]
-  if (provider.protocol === 'anthropic' && !apiKey) {
-    cb.onError('The Claude subscription for this model is not connected.')
-    return
+  let apiKey: string | undefined
+  let managedHeaders: Record<string, string> | undefined
+  if (provider.protocol === 'anthropic') {
+    apiKey = (await getValidToken()) ?? undefined
+    if (!apiKey) {
+      cb.onError('The Claude subscription for this model is not connected.')
+      return
+    }
+  } else if (provider.protocol === 'codex') {
+    apiKey = (await getCodexToken()) ?? undefined
+    if (!apiKey) {
+      cb.onError('The ChatGPT subscription for this model is not connected.')
+      return
+    }
+    const accountId = await getCodexAccountId()
+    if (accountId) managedHeaders = { 'chatgpt-account-id': accountId }
+  } else {
+    apiKey = creds[providerId]
   }
   const contextWindow = provider.models.find((m) => m.id === modelId)?.contextWindow ?? provider.defaultContext ?? 0
 
@@ -82,7 +97,7 @@ export async function runTelegramTurn(chatId: number, text: string, cb: TurnCall
     baseUrl: provider.baseUrl,
     apiKey,
     protocol: provider.protocol,
-    headers: provider.headers,
+    headers: managedHeaders ? { ...provider.headers, ...managedHeaders } : provider.headers,
     model: modelId,
     cwd: session.workspace,
     history: session.messages,

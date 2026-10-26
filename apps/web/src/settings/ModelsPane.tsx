@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { Provider } from '../lib/api'
 import { ClaudeConnect } from './ClaudeConnect'
+import { CodexConnect } from './CodexConnect'
 
 /** The managed Claude-subscription provider is shown/handled by ClaudeConnect, not the list. */
 const CLAUDE_SUB_ID = 'claude-subscription'
@@ -362,6 +363,7 @@ export function ModelsPane() {
     <div className="msub">
       <div className="grouphdr">Connect an account</div>
       <ClaudeConnect onChanged={reload} />
+      <CodexConnect onChanged={reload} />
 
       <div className="grouphdr" style={{ marginTop: 24 }}>Connected providers</div>
       {err && <div className="setrow-d" style={{ color: 'var(--danger)' }}>{err}</div>}

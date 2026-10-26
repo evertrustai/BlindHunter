@@ -226,6 +226,20 @@ export const api = {
     fetch('/api/auth/claude/refresh-models', { method: 'POST' }).then((r) =>
       json<{ models?: ProviderModel[]; error?: string }>(r),
     ),
+  // ---- Connect with ChatGPT (Codex device-code flow) ----
+  codexStart: () =>
+    fetch('/api/auth/codex/start', { method: 'POST' }).then((r) =>
+      json<{ ok: boolean; error?: string; pollId?: string; userCode?: string; verificationUri?: string; interval?: number }>(r),
+    ),
+  codexPoll: (pollId: string) =>
+    fetch('/api/auth/codex/poll', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ pollId }) }).then((r) =>
+      json<{ status: 'pending' | 'connected' | 'error'; error?: string; models?: ProviderModel[] }>(r),
+    ),
+  codexStatus: () =>
+    fetch('/api/auth/codex/status').then((r) =>
+      json<{ connected: boolean; expiresAt?: number; accountId?: string; models?: ProviderModel[] }>(r),
+    ),
+  disconnectCodex: () => fetch('/api/auth/codex/disconnect', { method: 'POST' }).then((r) => json<{ ok: boolean }>(r)),
   // ---- Telegram bot integration ----
   telegramStatus: () =>
     fetch('/api/telegram/status').then((r) =>

@@ -12,3 +12,5 @@ export const MCP_FILE = path.join(HOME, 'mcp.json')
 export const USAGE_FILE = path.join(HOME, 'usage.json')
 /** Owner-only store for a connected Claude Pro/Max subscription's OAuth tokens. */
 export const CLAUDE_OAUTH_FILE = path.join(HOME, 'claude-oauth.json')
+/** Owner-only store for a connected ChatGPT (Codex) subscription's OAuth tokens. */
+export const CODEX_OAUTH_FILE = path.join(HOME, 'codex-oauth.json')
