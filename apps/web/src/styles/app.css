@@ -1799,3 +1799,15 @@
   padding: 10px 14px;
   text-align: center;
 }
+
+/* ---------- connect: plan warning ---------- */
+.conn-warn {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--amber-2);
+  background: var(--amber-soft);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 9px 11px;
+}

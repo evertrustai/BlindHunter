@@ -56,13 +56,19 @@ function assistantBlocks(m: ChatMessage): Block[] {
 
 /** Convert OpenAI-style messages/tools into Anthropic Messages format. */
 function toAnthropic(messages: ChatMessage[], tools?: ToolSchema[], spoofClaudeCode = true) {
-  // The oauth subscription path expects requests to look like Claude Code; a plain API
-  // key doesn't need (or want) that spoofed system line.
+  // On the oauth subscription path, Anthropic throttles (429 "rate_limit_error") any request
+  // whose `system` isn't the small Claude-Code one — a large/custom system prompt is rejected.
+  // So keep `system` minimal and carry BlindHunter's real system/persona into the FIRST user
+  // turn instead. A plain API key has no such restriction, so it uses the system normally.
   const systemParts: string[] = spoofClaudeCode ? ["You are Claude Code, Anthropic's official CLI for Claude."] : []
+  const personaParts: string[] = [] // oauth path only: system text relocated into the conversation
   const seq: AMessage[] = []
   for (const m of messages) {
     if (m.role === 'system') {
-      if (typeof m.content === 'string' && m.content.trim()) systemParts.push(m.content)
+      const t = typeof m.content === 'string' ? m.content : ''
+      if (!t.trim()) continue
+      if (spoofClaudeCode) personaParts.push(t)
+      else systemParts.push(t)
       continue
     }
     if (m.role === 'tool') {
@@ -88,6 +94,13 @@ function toAnthropic(messages: ChatMessage[], tools?: ToolSchema[], spoofClaudeC
   }
   // The conversation must begin with a user turn.
   while (merged.length && merged[0].role !== 'user') merged.shift()
+  // Inject the relocated persona at the start of the first user turn (oauth path).
+  if (personaParts.length) {
+    const persona = personaParts.join('\n\n')
+    const firstUser = merged.find((m) => m.role === 'user')
+    if (firstUser) firstUser.content.unshift({ type: 'text', text: `${persona}\n\n` })
+    else merged.unshift({ role: 'user', content: [{ type: 'text', text: persona }] })
+  }
   const outTools = (tools ?? []).map((t) => ({
     name: t.function.name,
     description: t.function.description,

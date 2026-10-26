@@ -116,7 +116,7 @@ export function CodexConnect({ onChanged }: { onChanged?: () => void }) {
   if (status?.connected) {
     const n = status.models?.length ?? 0
     return (
-      <div className="conn-card is-connected" style={{ marginTop: 14 }}>
+      <div className="conn-card is-connected" style={{ marginTop: 14, flexWrap: 'wrap' }}>
         <div className="conn-ico codex">◉</div>
         <div className="conn-info">
           <div className="conn-title">ChatGPT subscription — connected</div>
@@ -127,6 +127,12 @@ export function CodexConnect({ onChanged }: { onChanged?: () => void }) {
         <button className="conn-dis" onClick={disconnect} disabled={busy}>
           {busy ? '…' : 'Disconnect'}
         </button>
+        {n === 0 && (
+          <div className="conn-warn" style={{ flexBasis: '100%' }}>
+            Your ChatGPT plan has no Codex models available — Codex requires a <b>Plus</b> or <b>Pro</b> plan (a
+            <b> Go</b> plan doesn't include it). The sign-in worked, but there's nothing to run.
+          </div>
+        )}
       </div>
     )
   }

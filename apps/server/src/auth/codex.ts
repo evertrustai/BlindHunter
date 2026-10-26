@@ -205,3 +205,34 @@ export async function status(): Promise<{ connected: boolean; expiresAt?: number
 export async function disconnect(): Promise<void> {
   await saveTokens(null)
 }
+
+/**
+ * The Codex models this account can actually use. A ChatGPT Go plan returns an empty list
+ * (Codex needs Plus/Pro), so the caller can tell the user their plan doesn't include it.
+ */
+export async function listModels(): Promise<{ id: string; name?: string }[]> {
+  const token = await getValidToken()
+  if (!token) return []
+  const accountId = await getAccountId()
+  try {
+    const res = await fetch(`https://chatgpt.com/backend-api/codex/models?client_version=0.48.0`, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        originator: 'codex_cli_rs',
+        'user-agent': UA,
+        accept: 'application/json',
+        ...(accountId ? { 'chatgpt-account-id': accountId } : {}),
+      },
+    })
+    if (!res.ok) return []
+    const j = (await res.json()) as { models?: unknown[] }
+    return (j.models ?? []).map((m) => {
+      if (typeof m === 'string') return { id: m }
+      const o = m as { slug?: string; id?: string; title?: string; display_name?: string }
+      const id = o.slug ?? o.id ?? ''
+      return { id, name: o.title ?? o.display_name ?? id }
+    }).filter((m) => m.id)
+  } catch {
+    return []
+  }
+}

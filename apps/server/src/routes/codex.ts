@@ -1,27 +1,23 @@
 import type { FastifyInstance } from 'fastify'
-import { startDeviceAuth, pollDeviceAuth, status, disconnect } from '../auth/codex.js'
+import { startDeviceAuth, pollDeviceAuth, status, disconnect, listModels } from '../auth/codex.js'
 import { updateSettings, loadSettings } from '../config/store.js'
 import type { Provider, ProviderModel } from '../config/types.js'
 
 /** The synthetic provider that represents a connected ChatGPT (Codex) subscription. */
 const CODEX_PROVIDER_ID = 'chatgpt-subscription'
-// The Codex backend has no public model-list endpoint, so offer a known set the user can pick.
-const CODEX_MODELS: ProviderModel[] = [
-  { id: 'gpt-5.1-codex', name: 'GPT-5.1 Codex', contextWindow: 272000 },
-  { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', contextWindow: 272000 },
-  { id: 'gpt-5.1', name: 'GPT-5.1', contextWindow: 272000 },
-  { id: 'gpt-5-codex', name: 'GPT-5 Codex', contextWindow: 272000 },
-  { id: 'gpt-5', name: 'GPT-5', contextWindow: 272000 },
-]
 
 async function upsertCodexProvider(): Promise<Provider> {
+  // Use the models the account actually has. A ChatGPT Go plan returns none (Codex needs
+  // Plus/Pro) — register the provider with an empty list so the UI can say so honestly.
+  const fetched = await listModels()
+  const models: ProviderModel[] = fetched.map((m) => ({ id: m.id, name: m.name ?? m.id, contextWindow: 272000 }))
   const prov: Provider = {
     id: CODEX_PROVIDER_ID,
     displayName: 'ChatGPT (subscription)',
     baseUrl: 'https://chatgpt.com/backend-api/codex',
     protocol: 'codex',
     defaultContext: 272000,
-    models: CODEX_MODELS,
+    models,
     enabled: true,
   }
   await updateSettings((s) => {
@@ -62,6 +58,9 @@ export async function codexRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/auth/codex/status', async () => {
     const st = await status()
     if (!st.connected) return st
+    // Re-sync the real model list (reflects the account's plan — e.g. Go has none).
+    const prov = await upsertCodexProvider().catch(() => null)
+    if (prov) return { ...st, models: prov.models }
     const settings = await loadSettings()
     return { ...st, models: settings.providers.find((p) => p.id === CODEX_PROVIDER_ID)?.models ?? [] }
   })
