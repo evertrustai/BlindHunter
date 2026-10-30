@@ -7,12 +7,18 @@ import { McpServers } from './McpServers'
 export function PluginsPane() {
   const [tools, setTools] = useState<PluginTool[] | null>(null)
   const [saved, setSaved] = useState(false)
+  const [skills, setSkills] = useState<{ command: string; name: string; description: string }[]>([])
+  const [skillQuery, setSkillQuery] = useState('')
 
   useEffect(() => {
     void api
       .getPlugins()
       .then((r) => setTools(r.tools))
       .catch(() => setTools([]))
+    void api
+      .getSkills()
+      .then(setSkills)
+      .catch(() => setSkills([]))
   }, [])
 
   async function toggle(name: string, enabled: boolean) {
@@ -51,10 +57,40 @@ export function PluginsPane() {
         </div>
       ))}
 
-      <div className="grouphdr">Skills</div>
-      <div className="setrow-d" style={{ padding: '0 0 6px' }}>
-        No skills installed yet. Skill packages will appear here.
+      <div className="grouphdr">
+        Skills
+        {skills.length > 0 && <span className="saved-tag">{skills.length} installed</span>}
       </div>
+      <div className="setrow-d" style={{ padding: '0 0 6px' }}>
+        {skills.length
+          ? 'Pre-installed offensive-security playbooks. The agent loads one when a task matches its /command (or you can invoke it yourself).'
+          : 'No skills found. The bundled /skills library should load automatically.'}
+      </div>
+      {skills.length > 0 && (
+        <>
+          <input
+            className="ctl"
+            style={{ width: '100%', marginBottom: 8 }}
+            placeholder={`Search ${skills.length} skills…`}
+            value={skillQuery}
+            onChange={(e) => setSkillQuery(e.target.value)}
+          />
+          <div className="skill-list">
+            {skills
+              .filter((s) => {
+                const q = skillQuery.trim().toLowerCase()
+                return !q || s.command.includes(q) || s.description.toLowerCase().includes(q)
+              })
+              .slice(0, 300)
+              .map((s) => (
+                <div className="skill-row" key={s.command}>
+                  <code className="skill-cmd">/{s.command}</code>
+                  <span className="skill-desc">{s.description}</span>
+                </div>
+              ))}
+          </div>
+        </>
+      )}
 
       <div className="grouphdr">MCP servers</div>
       <McpServers />

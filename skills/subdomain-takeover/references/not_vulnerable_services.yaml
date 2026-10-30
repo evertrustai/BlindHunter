@@ -1,0 +1,125 @@
+# Services That Have Been Patched Against Subdomain Takeover
+# These services previously allowed takeover but have since implemented mitigations.
+# Findings against these services should be classified as NOT_VULNERABLE or INFORMATIONAL.
+#
+# Sources: EdOverflow/can-i-take-over-xyz issues, vendor security advisories
+
+not_vulnerable_services:
+
+  - service: "Vercel"
+    cname_patterns:
+      - "*.vercel.app"
+      - "*.now.sh"
+    mitigation: "Domain verification required via DNS TXT record"
+    mitigation_date: "2022+"
+    reference: "https://github.com/EdOverflow/can-i-take-over-xyz/issues/183"
+    notes: |
+      Vercel now requires adding a TXT record to verify domain ownership.
+      Cannot claim a domain without access to DNS configuration.
+
+  - service: "Netlify"
+    cname_patterns:
+      - "*.netlify.app"
+      - "*.netlify.com"
+    mitigation: "TXT record verification required for custom domains"
+    mitigation_date: "2023+"
+    reference: "https://github.com/EdOverflow/can-i-take-over-xyz/issues/40"
+    notes: |
+      Netlify added domain verification.
+      Old sites without verification may still be vulnerable (edge case).
+
+  - service: "Zendesk"
+    cname_patterns:
+      - "*.zendesk.com"
+    mitigation: "Domain verification and CNAME validation"
+    mitigation_date: "2021+"
+    reference: "https://github.com/EdOverflow/can-i-take-over-xyz/issues/23"
+    notes: "Zendesk requires proof of domain ownership."
+
+  - service: "Freshdesk"
+    cname_patterns:
+      - "*.freshdesk.com"
+    mitigation: "Domain verification implemented"
+    mitigation_date: "2022+"
+    notes: "Freshdesk no longer allows arbitrary custom domain claiming."
+
+  - service: "HubSpot"
+    cname_patterns:
+      - "*.hubspot.net"
+      - "*.hs-sites.com"
+    mitigation: "Domain verification required"
+    mitigation_date: "2022+"
+    notes: "HubSpot requires DNS verification."
+
+  - service: "Firebase Hosting"
+    cname_patterns:
+      - "*.firebaseapp.com"
+      - "*.web.app"
+    mitigation: "TXT record verification required"
+    mitigation_date: "Always required"
+    notes: "Firebase has always required domain verification."
+
+  - service: "Cloudflare Pages"
+    cname_patterns:
+      - "*.pages.dev"
+    mitigation: "Domain must be added to Cloudflare account with DNS control"
+    mitigation_date: "Always required"
+    notes: "Cloudflare requires domain to be managed through their DNS."
+
+  - service: "Unbounce"
+    cname_patterns:
+      - "*.unbouncepages.com"
+    mitigation: "Domain verification"
+    mitigation_date: "2023+"
+    notes: "Unbounce has added protections."
+
+  - service: "Desk.com"
+    cname_patterns:
+      - "*.desk.com"
+    mitigation: "Service sunset"
+    mitigation_date: "2020"
+    notes: "Desk.com has been migrated to Salesforce Service Cloud."
+
+  - service: "Google Cloud (App Engine)"
+    cname_patterns:
+      - "*.appspot.com"
+    mitigation: "Project ID must match, domain verification required"
+    mitigation_date: "Always"
+    notes: "Google Cloud requires domain verification for custom domains."
+
+# ============================================
+# EDGE CASE SERVICES (may or may not be vulnerable)
+# ============================================
+edge_case_services:
+
+  - service: "AWS CloudFront"
+    status: "Partially mitigated"
+    notes: |
+      AWS has added protections for new CloudFront distributions.
+      Older distributions created before the mitigation may still be vulnerable.
+      Requires case-by-case verification.
+
+  - service: "Azure Front Door"
+    status: "Partially mitigated"
+    notes: |
+      Azure has added domain verification for Azure Front Door.
+      Some older configurations may not have verification enabled.
+
+  - service: "Shopify"
+    status: "Edge case"
+    notes: |
+      Shopify has added protections but some edge cases remain.
+      Store must be created and domain added in a specific sequence.
+      HackerOne reports show mixed results.
+
+  - service: "Webflow"
+    status: "Partially mitigated"
+    notes: |
+      Webflow has added domain verification in recent updates.
+      Older configurations may still be vulnerable.
+
+  - service: "Tilda"
+    status: "Edge case"
+    notes: |
+      Only vulnerable if the Tilda site was fully deleted (not just expired).
+      Expired sites retain the domain claim.

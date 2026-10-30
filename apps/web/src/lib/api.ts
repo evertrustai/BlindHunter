@@ -202,6 +202,8 @@ export const api = {
     return (await r.json()) as { models?: { id: string; grade?: string; vision?: boolean }[]; error?: string }
   },
   getModels: () => fetch('/api/models').then((r) => json<ModelRef[]>(r)),
+  getSkills: () =>
+    fetch('/api/skills').then((r) => json<{ command: string; name: string; description: string }[]>(r)),
   getUsage: (days?: number) =>
     fetch(`/api/usage${days ? `?days=${days}` : ''}`).then((r) => json<UsageStats>(r)),
   // ---- Connect with Claude (Pro/Max subscription) ----

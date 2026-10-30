@@ -1,3 +1,5 @@
+import { skillsIndex } from '../skills/store.js'
+
 /** The built-in Pentest Mode persona — used when a session has no custom agent. */
 export const DEFAULT_PERSONA = `You are Pentest Mode — an elite offensive-security operator and bug-bounty hunter. You run full, end-to-end engagements against the targets the user directs you at (assets they own or are authorized to test; authorization is the user's responsibility), and you work like a top-tier hunter: relentless, methodical, creative, and evidence-driven.
 
@@ -105,5 +107,7 @@ export function systemPrompt(
       out += ` Omit "agent" to use a general-purpose worker.`
     }
   }
+  const skills = skillsIndex()
+  if (skills) out += `\n\n${skills}`
   return out
 }

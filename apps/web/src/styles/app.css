@@ -1811,3 +1811,33 @@
   border-radius: 8px;
   padding: 9px 11px;
 }
+
+/* ---------- installed skills list ---------- */
+.skill-list {
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.skill-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+}
+.skill-row:last-child {
+  border-bottom: none;
+}
+.skill-cmd {
+  flex: none;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--amber-2);
+  white-space: nowrap;
+}
+.skill-desc {
+  color: var(--txt-2);
+  line-height: 1.4;
+}

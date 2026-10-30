@@ -15,6 +15,8 @@ import { authRoutes } from './routes/auth.js'
 import { telegramRoutes } from './routes/telegram.js'
 import { terminalRoutes } from './routes/terminal.js'
 import { codexRoutes } from './routes/codex.js'
+import { skillsRoutes } from './routes/skills.js'
+import { loadSkills } from './skills/store.js'
 import { loadSessionsFromDisk, loadGroupsFromDisk } from './sessions/store.js'
 import { loadAgentsFromDisk } from './agents/store.js'
 import { loadMcpFromDisk } from './mcp/store.js'
@@ -35,6 +37,7 @@ export async function buildApp() {
   await loadMcpFromDisk()
   await loadSessionsFromDisk()
   await loadUsageFromDisk()
+  loadSkills() // scan the bundled /skills library once at boot
   await app.register(cors, {
     // Same-origin and non-browser clients send no Origin header — allow those;
     // otherwise only loopback origins may read responses.
@@ -79,6 +82,7 @@ export async function buildApp() {
   await telegramRoutes(app)
   await terminalRoutes(app)
   await codexRoutes(app)
+  await skillsRoutes(app)
   await systemRoutes(app)
 
   return app

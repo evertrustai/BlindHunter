@@ -1,0 +1,608 @@
+# Subdomain Takeover Fingerprint Database
+# Source: EdOverflow/can-i-take-over-xyz + HackerOne disclosures + community research
+# Last Updated: 2025
+#
+# Fields:
+#   service: Name of the service
+#   cname_patterns: CNAME patterns that indicate this service
+#   fingerprints: HTTP response strings indicating unclaimed resource
+#   status: vulnerable | not_vulnerable | edge_case | requires_verification
+#   http_status: Expected HTTP status code(s) when vulnerable
+#   documentation: Reference links
+#   notes: Additional context
+#   can_claim: Whether an attacker can actually claim the resource
+
+services:
+
+  # ============================================
+  # AWS SERVICES
+  # ============================================
+  
+  - service: "AWS S3"
+    cname_patterns:
+      - "*.s3.amazonaws.com"
+      - "*.s3-website-*.amazonaws.com"
+      - "*.s3.*.amazonaws.com"
+      - "s3-website.*.amazonaws.com"
+    fingerprints:
+      - "NoSuchBucket"
+      - "The specified bucket does not exist"
+      - "<Code>NoSuchBucket</Code>"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/36"
+      - "https://hackerone.com/reports/1715538"
+      - "https://hackerone.com/reports/121461"
+    notes: |
+      Classic takeover. Create bucket with exact name in correct region.
+      Bucket names are globally unique in AWS.
+      CRITICAL: Determine the correct AWS region before attempting claim.
+      Region can often be extracted from the CNAME itself.
+
+  - service: "AWS CloudFront"
+    cname_patterns:
+      - "*.cloudfront.net"
+    fingerprints:
+      - "Bad Request"
+      - "ERROR The request could not be satisfied"
+      - "The distribution is not configured for the requested origin"
+      - "CloudFront wasn't able to connect to the origin"
+    status: "edge_case"
+    http_status: [403, 400]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/29"
+    notes: |
+      Edge case. AWS has added protections.
+      Takeover requires creating a new CloudFront distribution with the target
+      subdomain as an Alternate Domain Name (CNAME).
+      May not always work due to AWS domain verification requirements added in 2024+.
+      Verify the distribution ID is truly orphaned.
+
+  - service: "AWS Elastic Beanstalk"
+    cname_patterns:
+      - "*.elasticbeanstalk.com"
+    fingerprints:
+      - "NXDOMAIN"
+    status: "vulnerable"
+    http_status: [0]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/194"
+    notes: |
+      If the Elastic Beanstalk environment is deleted but CNAME remains,
+      the environment name can be reclaimed in the same AWS region.
+
+  - service: "AWS Global Accelerator"
+    cname_patterns:
+      - "*.awsglobalaccelerator.com"
+    fingerprints:
+      - "NXDOMAIN"
+    status: "edge_case"
+    http_status: [0]
+    can_claim: false
+    notes: "Requires specific conditions. Rarely exploitable."
+
+  # ============================================
+  # MICROSOFT AZURE
+  # ============================================
+
+  - service: "Azure App Service"
+    cname_patterns:
+      - "*.azurewebsites.net"
+    fingerprints:
+      - "404 Web Site not found"
+      - "Azure Web App - Your web app is running and waiting for your content"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/35"
+      - "https://hackerone.com/reports/1694845"
+    notes: |
+      Create an Azure App Service with the matching name.
+      App names are globally unique across Azure.
+      Some Azure regions/subscriptions may have restrictions.
+
+  - service: "Azure Traffic Manager"
+    cname_patterns:
+      - "*.trafficmanager.net"
+    fingerprints:
+      - "NXDOMAIN"
+    status: "vulnerable"
+    http_status: [0]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/65"
+    notes: "Create Traffic Manager profile with matching name."
+
+  - service: "Azure CDN"
+    cname_patterns:
+      - "*.azureedge.net"
+    fingerprints:
+      - "404 - Not Found"
+      - "This endpoint is not currently active"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create Azure CDN endpoint with matching name."
+
+  - service: "Azure Blob Storage"
+    cname_patterns:
+      - "*.blob.core.windows.net"
+    fingerprints:
+      - "BlobNotFound"
+      - "ContainerNotFound"
+      - "ResourceNotFound"
+      - "The specified resource does not exist"
+    status: "edge_case"
+    http_status: [404]
+    can_claim: true
+    notes: |
+      Storage account names are globally unique.
+      If deleted, the name may be available for reclaim.
+
+  - service: "Azure Front Door"
+    cname_patterns:
+      - "*.azurefd.net"
+    fingerprints:
+      - "Our services aren't available right now"
+      - "The requested content does not exist"
+    status: "edge_case"
+    http_status: [400, 404]
+    can_claim: true
+    notes: "Azure has added domain verification for Front Door."
+
+  - service: "Azure Cloud App"
+    cname_patterns:
+      - "*.cloudapp.azure.com"
+    fingerprints:
+      - "NXDOMAIN"
+    status: "edge_case"
+    http_status: [0]
+    can_claim: true
+    notes: "Requires creating a cloud service with the matching name in the correct region."
+
+  - service: "Azure API Management"
+    cname_patterns:
+      - "*.azure-api.net"
+    fingerprints:
+      - "NXDOMAIN"
+    status: "edge_case"
+    http_status: [0]
+    can_claim: true
+    notes: "Create API Management instance with matching name."
+
+  # ============================================
+  # GITHUB
+  # ============================================
+
+  - service: "GitHub Pages"
+    cname_patterns:
+      - "*.github.io"
+      - "*.githubusercontent.com"
+    fingerprints:
+      - "There isn't a GitHub Pages site here."
+      - "For root URLs (like http://example.com/) you must provide an index.html file"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/37"
+      - "https://hackerone.com/reports/263902"
+      - "https://hackerone.com/reports/325336"
+    notes: |
+      Two scenarios:
+      1. User/org <user>.github.io doesn't exist → register username and create repo
+      2. User exists but <user>.github.io repo is deleted → create the repo
+      GitHub Pages requires CNAME file in repo matching the custom domain.
+      GitHub has added domain verification for organizations (check if org has it).
+
+  # ============================================
+  # HOSTING PLATFORMS
+  # ============================================
+
+  - service: "Heroku"
+    cname_patterns:
+      - "*.herokuapp.com"
+      - "*.herokussl.com"
+      - "*.herokudns.com"
+    fingerprints:
+      - "No such app"
+      - "no-such-app"
+      - "herokucdn.com/error-pages/no-such-app"
+      - "There is nothing here, yet."
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/38"
+      - "https://hackerone.com/reports/202767"
+    notes: |
+      Create Heroku app with exact matching name.
+      App names are globally unique on Heroku.
+      Then add the custom domain to the app.
+
+  - service: "Pantheon"
+    cname_patterns:
+      - "*.pantheonsite.io"
+      - "*.pantheon.io"
+    fingerprints:
+      - "404 error unknown site!"
+      - "The gods are wise"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/24"
+    notes: "Create Pantheon site and add custom domain."
+
+  - service: "Netlify"
+    cname_patterns:
+      - "*.netlify.app"
+      - "*.netlify.com"
+      - "*.bitballoon.com"
+    fingerprints:
+      - "Not Found - Request ID:"
+      - "Page not found"
+    status: "edge_case"
+    http_status: [404]
+    can_claim: false
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/40"
+    notes: |
+      Netlify now requires domain verification via TXT record.
+      Previously vulnerable but mitigated.
+      Still worth checking as older configurations may not have verification.
+
+  - service: "Vercel"
+    cname_patterns:
+      - "*.vercel.app"
+      - "*.now.sh"
+      - "*.zeit.co"
+    fingerprints:
+      - "The deployment could not be found"
+      - "DEPLOYMENT_NOT_FOUND"
+    status: "not_vulnerable"
+    http_status: [404]
+    can_claim: false
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/183"
+    notes: "Vercel requires domain verification. NOT exploitable in most cases."
+
+  - service: "Surge.sh"
+    cname_patterns:
+      - "*.surge.sh"
+    fingerprints:
+      - "project not found"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/48"
+    notes: "Deploy surge project to claim the custom domain."
+
+  - service: "Fly.io"
+    cname_patterns:
+      - "*.fly.dev"
+    fingerprints:
+      - "404 Not Found"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create Fly.io app with matching configuration."
+
+  - service: "Render"
+    cname_patterns:
+      - "*.onrender.com"
+    fingerprints:
+      - "Not Found"
+    status: "edge_case"
+    http_status: [404]
+    can_claim: true
+    notes: "Render may require domain verification for custom domains."
+
+  - service: "Cloudflare Pages"
+    cname_patterns:
+      - "*.pages.dev"
+    fingerprints:
+      - "NXDOMAIN"
+    status: "not_vulnerable"
+    http_status: [0]
+    can_claim: false
+    notes: "Cloudflare requires domain verification."
+
+  - service: "Firebase"
+    cname_patterns:
+      - "*.firebaseapp.com"
+      - "*.web.app"
+    fingerprints:
+      - "Site Not Found"
+    status: "not_vulnerable"
+    http_status: [404]
+    can_claim: false
+    notes: "Firebase requires domain verification via TXT record."
+
+  # ============================================
+  # SaaS PLATFORMS
+  # ============================================
+
+  - service: "Shopify"
+    cname_patterns:
+      - "*.shopify.com"
+      - "*.myshopify.com"
+      - "shops.shopify.com"
+    fingerprints:
+      - "Sorry, this shop is currently unavailable"
+      - "Only one step left"
+    status: "edge_case"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/32"
+      - "https://hackerone.com/reports/502458"
+    notes: |
+      Shopify has added some protections but edge cases remain.
+      Need to create a Shopify store and add the domain.
+      Some documented successful takeovers on HackerOne.
+
+  - service: "Tumblr"
+    cname_patterns:
+      - "*.tumblr.com"
+      - "domains.tumblr.com"
+    fingerprints:
+      - "There's nothing here."
+      - "Whatever you were looking for doesn't currently exist at this address"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/240"
+    notes: "Create Tumblr blog and add custom domain."
+
+  - service: "Ghost"
+    cname_patterns:
+      - "*.ghost.io"
+    fingerprints:
+      - "The thing you were looking for is no longer here, or never was"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create Ghost blog and configure custom domain."
+
+  - service: "WordPress.com"
+    cname_patterns:
+      - "*.wordpress.com"
+    fingerprints:
+      - "Do you want to register"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create WordPress.com blog with matching subdomain."
+
+  - service: "Fastly"
+    cname_patterns:
+      - "*.fastly.net"
+      - "*.fastlylb.net"
+      - "*.global.prod.fastly.net"
+    fingerprints:
+      - "Fastly error: unknown domain"
+    status: "vulnerable"
+    http_status: [500]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/22"
+      - "https://hackerone.com/reports/358519"
+    notes: |
+      Create Fastly service and add the domain as a backend.
+      Fastly domains can be claimed by any customer.
+
+  - service: "Zendesk"
+    cname_patterns:
+      - "*.zendesk.com"
+    fingerprints:
+      - "Help Center Closed"
+      - "Oops, this help center no longer exists"
+    status: "not_vulnerable"
+    http_status: [404]
+    can_claim: false
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/23"
+    notes: "Zendesk now requires domain verification. Previously vulnerable."
+
+  - service: "Freshdesk"
+    cname_patterns:
+      - "*.freshdesk.com"
+    fingerprints:
+      - "There is no helpdesk here!"
+      - "May be this is still fresh"
+      - "is not a Freshdesk domain"
+    status: "not_vulnerable"
+    http_status: [404]
+    can_claim: false
+    notes: "Freshdesk has implemented protections."
+
+  - service: "Statuspage"
+    cname_patterns:
+      - "*.statuspage.io"
+      - "*.atlassian.net"
+    fingerprints:
+      - "You are being <a>redirected</a>"
+      - "StatusPage redirect"
+    status: "vulnerable"
+    http_status: [301, 302]
+    can_claim: true
+    notes: "Create Statuspage and claim the custom domain."
+
+  - service: "HelpJuice"
+    cname_patterns:
+      - "*.helpjuice.com"
+    fingerprints:
+      - "We could not find what you're looking for"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create HelpJuice account and add custom domain."
+
+  - service: "HelpScout"
+    cname_patterns:
+      - "*.helpscoutdocs.com"
+    fingerprints:
+      - "No settings were found for this company"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create HelpScout docs site and add custom domain."
+
+  - service: "FeedPress"
+    cname_patterns:
+      - "*.feedpress.me"
+      - "redirect.feedpress.me"
+    fingerprints:
+      - "The feed has not been found"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create FeedPress feed and add custom domain."
+
+  - service: "Bitbucket"
+    cname_patterns:
+      - "*.bitbucket.io"
+    fingerprints:
+      - "Repository not found"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    documentation:
+      - "https://github.com/EdOverflow/can-i-take-over-xyz/issues/18"
+    notes: "Create Bitbucket repository with matching name."
+
+  - service: "HubSpot"
+    cname_patterns:
+      - "*.hubspot.net"
+      - "*.hs-sites.com"
+    fingerprints:
+      - "Domain not found"
+    status: "not_vulnerable"
+    http_status: [404]
+    can_claim: false
+    notes: "HubSpot requires domain verification."
+
+  - service: "Cargo"
+    cname_patterns:
+      - "*.cargo.site"
+      - "*.cargocollective.com"
+    fingerprints:
+      - "If you're moving your domain away from Cargo"
+      - "404 Not Found"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create Cargo site with custom domain."
+
+  - service: "Smartling"
+    cname_patterns:
+      - "*.smartling.com"
+    fingerprints:
+      - "Domain is not configured"
+    status: "vulnerable"
+    http_status: [404, 301]
+    can_claim: true
+    notes: "Configure Smartling project with the domain."
+
+  - service: "Desk"
+    cname_patterns:
+      - "*.desk.com"
+    fingerprints:
+      - "Sorry, We Couldn't Find That Page"
+      - "Please check to make sure you've typed the URL correctly"
+    status: "not_vulnerable"
+    http_status: [404]
+    can_claim: false
+    notes: "Desk.com has been sunset/migrated to Salesforce."
+
+  - service: "Tilda"
+    cname_patterns:
+      - "*.tilda.ws"
+    fingerprints:
+      - "Please renew your subscription"
+    status: "edge_case"
+    http_status: [404]
+    can_claim: true
+    notes: "Edge case — only works if the Tilda site was deleted, not just expired."
+
+  - service: "Webflow"
+    cname_patterns:
+      - "*.webflow.io"
+      - "proxy-ssl.webflow.com"
+    fingerprints:
+      - "The page you are looking for doesn't exist or has been moved"
+    status: "edge_case"
+    http_status: [404]
+    can_claim: true
+    notes: "Webflow has added protections but edge cases may exist."
+
+  - service: "Strikingly"
+    cname_patterns:
+      - "*.strikinglydns.com"
+      - "*.s.strikinglydns.com"
+    fingerprints:
+      - "page not found"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create Strikingly site with matching domain."
+
+  - service: "Unbounce"
+    cname_patterns:
+      - "*.unbouncepages.com"
+    fingerprints:
+      - "The requested URL was not found on this server"
+    status: "not_vulnerable"
+    http_status: [404]
+    can_claim: false
+    notes: "Unbounce has implemented domain verification."
+
+  - service: "Agile CRM"
+    cname_patterns:
+      - "*.agilecrm.com"
+    fingerprints:
+      - "Sorry, this page is no longer available"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Add domain through Agile CRM account settings."
+
+  - service: "ReadMe.io"
+    cname_patterns:
+      - "*.readme.io"
+    fingerprints:
+      - "Project doesnt exist"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create ReadMe project and configure custom domain."
+
+  - service: "LaunchRock"
+    cname_patterns:
+      - "*.launchrock.com"
+    fingerprints:
+      - "It looks like you may have taken a wrong turn somewhere"
+    status: "vulnerable"
+    http_status: [404]
+    can_claim: true
+    notes: "Create LaunchRock page with the domain."
+
+  - service: "Ngrok"
+    cname_patterns:
+      - "*.ngrok.io"
+      - "*.ngrok-free.app"
+    fingerprints:
+      - "Tunnel not found"
+      - "ngrok.io not found"
+    status: "edge_case"
+    http_status: [404]
+    can_claim: false
+    notes: "Ngrok tunnels are ephemeral. Not a true takeover scenario."

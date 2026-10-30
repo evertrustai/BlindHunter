@@ -1,0 +1,323 @@
+# CNAME to Cloud Provider Mapping Database
+# Quick-reference for mapping CNAME targets to their cloud provider and service type
+# Used by Recon-Agent for rapid classification
+
+# ============================================
+# AWS (Amazon Web Services)
+# ============================================
+aws:
+  s3:
+    patterns:
+      - "*.s3.amazonaws.com"
+      - "*.s3-website-*.amazonaws.com"
+      - "*.s3.*.amazonaws.com"
+      - "s3-website.*.amazonaws.com"
+    service_type: "Object Storage"
+    takeover_possible: true
+    fingerprint: "NoSuchBucket"
+
+  cloudfront:
+    patterns:
+      - "*.cloudfront.net"
+    service_type: "CDN"
+    takeover_possible: "edge_case"
+    fingerprint: "Bad Request | ERROR"
+
+  elastic_beanstalk:
+    patterns:
+      - "*.elasticbeanstalk.com"
+    service_type: "PaaS"
+    takeover_possible: true
+    fingerprint: "NXDOMAIN"
+
+  elb:
+    patterns:
+      - "*.elb.amazonaws.com"
+      - "*.elb.*.amazonaws.com"
+    service_type: "Load Balancer"
+    takeover_possible: false
+    notes: "ELB endpoints are tied to AWS accounts, not claimable"
+
+  global_accelerator:
+    patterns:
+      - "*.awsglobalaccelerator.com"
+    service_type: "Network Accelerator"
+    takeover_possible: false
+
+# ============================================
+# MICROSOFT AZURE
+# ============================================
+azure:
+  app_service:
+    patterns:
+      - "*.azurewebsites.net"
+      - "*.scm.azurewebsites.net"
+    service_type: "PaaS"
+    takeover_possible: true
+    fingerprint: "404 Web Site not found"
+
+  traffic_manager:
+    patterns:
+      - "*.trafficmanager.net"
+    service_type: "DNS Load Balancer"
+    takeover_possible: true
+    fingerprint: "NXDOMAIN"
+
+  cdn:
+    patterns:
+      - "*.azureedge.net"
+    service_type: "CDN"
+    takeover_possible: true
+    fingerprint: "404 - Not Found"
+
+  blob_storage:
+    patterns:
+      - "*.blob.core.windows.net"
+    service_type: "Object Storage"
+    takeover_possible: "edge_case"
+    fingerprint: "BlobNotFound | ResourceNotFound"
+
+  front_door:
+    patterns:
+      - "*.azurefd.net"
+    service_type: "CDN/WAF"
+    takeover_possible: "edge_case"
+
+  cloud_app:
+    patterns:
+      - "*.cloudapp.azure.com"
+    service_type: "Cloud Service"
+    takeover_possible: "edge_case"
+    fingerprint: "NXDOMAIN"
+
+  api_management:
+    patterns:
+      - "*.azure-api.net"
+    service_type: "API Gateway"
+    takeover_possible: "edge_case"
+
+# ============================================
+# GOOGLE CLOUD
+# ============================================
+gcp:
+  storage:
+    patterns:
+      - "*.storage.googleapis.com"
+      - "c.storage.googleapis.com"
+    service_type: "Object Storage"
+    takeover_possible: "edge_case"
+    fingerprint: "NoSuchBucket"
+
+  app_engine:
+    patterns:
+      - "*.appspot.com"
+    service_type: "PaaS"
+    takeover_possible: false
+    notes: "Requires domain verification"
+
+  firebase:
+    patterns:
+      - "*.firebaseapp.com"
+      - "*.web.app"
+    service_type: "Hosting"
+    takeover_possible: false
+    notes: "Requires domain verification"
+
+# ============================================
+# GITHUB
+# ============================================
+github:
+  pages:
+    patterns:
+      - "*.github.io"
+    service_type: "Static Hosting"
+    takeover_possible: true
+    fingerprint: "There isn't a GitHub Pages site here"
+
+  content:
+    patterns:
+      - "*.githubusercontent.com"
+    service_type: "Content Delivery"
+    takeover_possible: false
+
+# ============================================
+# HOSTING PLATFORMS
+# ============================================
+hosting:
+  heroku:
+    patterns:
+      - "*.herokuapp.com"
+      - "*.herokussl.com"
+      - "*.herokudns.com"
+    service_type: "PaaS"
+    takeover_possible: true
+    fingerprint: "No such app"
+
+  pantheon:
+    patterns:
+      - "*.pantheonsite.io"
+      - "*.pantheon.io"
+    service_type: "CMS Hosting"
+    takeover_possible: true
+    fingerprint: "404 error unknown site"
+
+  netlify:
+    patterns:
+      - "*.netlify.app"
+      - "*.netlify.com"
+      - "*.bitballoon.com"
+    service_type: "Static Hosting"
+    takeover_possible: false
+    notes: "Domain verification required"
+
+  vercel:
+    patterns:
+      - "*.vercel.app"
+      - "*.now.sh"
+    service_type: "Serverless Hosting"
+    takeover_possible: false
+    notes: "Domain verification required"
+
+  surge:
+    patterns:
+      - "*.surge.sh"
+    service_type: "Static Hosting"
+    takeover_possible: true
+    fingerprint: "project not found"
+
+  fly_io:
+    patterns:
+      - "*.fly.dev"
+    service_type: "Container Hosting"
+    takeover_possible: true
+
+  render:
+    patterns:
+      - "*.onrender.com"
+    service_type: "PaaS"
+    takeover_possible: "edge_case"
+
+  cloudflare_pages:
+    patterns:
+      - "*.pages.dev"
+      - "*.workers.dev"
+    service_type: "Edge Hosting"
+    takeover_possible: false
+
+# ============================================
+# SaaS / CMS PLATFORMS
+# ============================================
+saas:
+  shopify:
+    patterns:
+      - "*.shopify.com"
+      - "*.myshopify.com"
+      - "shops.shopify.com"
+    service_type: "E-commerce"
+    takeover_possible: "edge_case"
+    fingerprint: "Sorry, this shop is currently unavailable"
+
+  tumblr:
+    patterns:
+      - "*.tumblr.com"
+      - "domains.tumblr.com"
+    service_type: "Blog Platform"
+    takeover_possible: true
+    fingerprint: "There's nothing here"
+
+  ghost:
+    patterns:
+      - "*.ghost.io"
+    service_type: "Blog Platform"
+    takeover_possible: true
+
+  wordpress:
+    patterns:
+      - "*.wordpress.com"
+    service_type: "Blog Platform"
+    takeover_possible: true
+    fingerprint: "Do you want to register"
+
+  fastly:
+    patterns:
+      - "*.fastly.net"
+      - "*.fastlylb.net"
+      - "*.global.prod.fastly.net"
+    service_type: "CDN"
+    takeover_possible: true
+    fingerprint: "Fastly error: unknown domain"
+
+  zendesk:
+    patterns:
+      - "*.zendesk.com"
+    service_type: "Support"
+    takeover_possible: false
+
+  statuspage:
+    patterns:
+      - "*.statuspage.io"
+    service_type: "Status Page"
+    takeover_possible: true
+
+  helpjuice:
+    patterns:
+      - "*.helpjuice.com"
+    service_type: "Knowledge Base"
+    takeover_possible: true
+
+  helpscout:
+    patterns:
+      - "*.helpscoutdocs.com"
+    service_type: "Knowledge Base"
+    takeover_possible: true
+
+  feedpress:
+    patterns:
+      - "*.feedpress.me"
+    service_type: "RSS Feed"
+    takeover_possible: true
+
+  bitbucket:
+    patterns:
+      - "*.bitbucket.io"
+    service_type: "Static Hosting"
+    takeover_possible: true
+    fingerprint: "Repository not found"
+
+  cargo:
+    patterns:
+      - "*.cargo.site"
+      - "*.cargocollective.com"
+    service_type: "Portfolio"
+    takeover_possible: true
+
+  webflow:
+    patterns:
+      - "*.webflow.io"
+      - "proxy-ssl.webflow.com"
+    service_type: "Website Builder"
+    takeover_possible: "edge_case"
+
+  strikingly:
+    patterns:
+      - "*.strikinglydns.com"
+    service_type: "Website Builder"
+    takeover_possible: true
+
+  readme:
+    patterns:
+      - "*.readme.io"
+    service_type: "Documentation"
+    takeover_possible: true
+
+  launchrock:
+    patterns:
+      - "*.launchrock.com"
+    service_type: "Landing Page"
+    takeover_possible: true
+
+  agilecrm:
+    patterns:
+      - "*.agilecrm.com"
+    service_type: "CRM"
+    takeover_possible: true
