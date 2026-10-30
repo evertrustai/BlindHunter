@@ -484,6 +484,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+}
+.toolg-fname {
+  color: var(--txt);
+  cursor: pointer;
+}
+.toolg-fname:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.tgf-add {
+  color: #3fb950;
+  font-variant-numeric: tabular-nums;
+}
+.tgf-del {
+  color: #f85149;
+  font-variant-numeric: tabular-nums;
 }
 .toolg-cv {
   flex: none;

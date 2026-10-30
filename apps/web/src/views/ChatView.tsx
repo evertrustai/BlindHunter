@@ -91,49 +91,93 @@ function summarizeTools(tools: ToolItem[]): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-/** A file a tool produced/touched that the viewer can open (deduped per group). */
-function openableFile(t: ToolItem): { name: string; path: string } | null {
+interface FileSeg {
+  verb: string
+  name: string
+  path: string
+  add: number
+  del: number
+}
+
+/** A file a tool produced/touched, as a Claude-style reference ("Edited x.ts +3 −1"). */
+function openableFile(t: ToolItem): FileSeg | null {
+  const lines = (s: unknown) => (typeof s === 'string' && s.length ? s.split('\n').length : 0)
   if (t.name === 'write_file' || t.name === 'edit_file' || t.name === 'read_file') {
     try {
-      const a = JSON.parse(t.args || '{}') as { path?: string }
-      if (typeof a.path === 'string' && a.path) return { name: baseName(a.path), path: a.path }
+      const a = JSON.parse(t.args || '{}') as { path?: string; content?: string; old_string?: string; new_string?: string }
+      if (typeof a.path !== 'string' || !a.path) return null
+      if (t.name === 'write_file') return { verb: 'Created', name: baseName(a.path), path: a.path, add: lines(a.content), del: 0 }
+      if (t.name === 'edit_file')
+        return { verb: 'Edited', name: baseName(a.path), path: a.path, add: lines(a.new_string), del: lines(a.old_string) }
+      return { verb: 'Read', name: baseName(a.path), path: a.path, add: 0, del: 0 }
     } catch {
       /* unparsable args */
     }
   }
   if (t.name === 'browser_screenshot' && t.result) {
     const m = /screenshot saved:\s*(.+?)\s*\(/.exec(t.result)
-    if (m) return { name: baseName(m[1]), path: m[1] }
+    if (m) return { verb: 'Captured', name: baseName(m[1]), path: m[1], add: 0, del: 0 }
   }
   return null
 }
+
+const FILE_TOOLS = new Set(['write_file', 'edit_file', 'read_file', 'browser_screenshot'])
 
 /** A collapsed, borderless summary line for a run of tool calls; expands to clean output. */
 const ToolGroup = memo(function ToolGroup({ tools, onOpenFile }: { tools: ToolItem[]; onOpenFile?: (path: string) => void }) {
   const [open, setOpen] = useState(false)
   const running = tools.some((t) => t.result === undefined && t.approval !== 'rejected')
-  // Distinct files this run touched, so you can open any of them in the viewer.
-  const openables = onOpenFile
-    ? Array.from(
-        new Map(tools.map(openableFile).filter((f): f is { name: string; path: string } => !!f).map((f) => [f.path, f])).values(),
-      )
+  // File references (deduped) shown inline as plain text with clickable names + diff counts.
+  const segs = onOpenFile
+    ? Array.from(new Map(tools.map(openableFile).filter((f): f is FileSeg => !!f).map((f) => [f.path, f])).values())
     : []
+  const restTools = tools.filter((t) => !FILE_TOOLS.has(t.name))
+  const rest = restTools.length ? summarizeTools(restTools) : ''
+  const toggle = () => setOpen((o) => !o)
   return (
     <div className="toolg">
-      <button className="toolg-head" onClick={() => setOpen((o) => !o)}>
-        <span className="toolg-label">{summarizeTools(tools)}</span>
+      <div
+        className="toolg-head"
+        role="button"
+        tabIndex={0}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            toggle()
+          }
+        }}
+      >
+        <span className="toolg-label">
+          {segs.map((s, i) => (
+            <span key={s.path}>
+              {i > 0 ? ', ' : ''}
+              {s.verb}{' '}
+              <span
+                className="toolg-fname"
+                title={`Open ${s.path}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenFile?.(s.path)
+                }}
+              >
+                {s.name}
+              </span>
+              {s.add > 0 ? <span className="tgf-add"> +{s.add}</span> : null}
+              {s.del > 0 ? <span className="tgf-del"> −{s.del}</span> : null}
+            </span>
+          ))}
+          {rest ? (
+            <span>
+              {segs.length ? ', ' : ''}
+              {rest}
+            </span>
+          ) : null}
+          {!segs.length && !rest ? summarizeTools(tools) : null}
+        </span>
         {running && <span className="toolg-spin" />}
         <span className={open ? 'toolg-cv open' : 'toolg-cv'}>›</span>
-      </button>
-      {openables.length > 0 && (
-        <div className="toolg-files">
-          {openables.map((f) => (
-            <button key={f.path} className="toolg-file" title={`Open ${f.path}`} onClick={() => onOpenFile?.(f.path)}>
-              {/\.(png|jpe?g|gif|webp|bmp|ico|avif|svg)$/i.test(f.path) ? '🖼' : '📄'} {f.name}
-            </button>
-          ))}
-        </div>
-      )}
+      </div>
       {open && (
         <div className="toolg-body">
           {tools.map((t, i) => {

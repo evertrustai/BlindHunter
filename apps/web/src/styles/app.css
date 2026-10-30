@@ -1103,34 +1103,6 @@
   animation: bx-spin 0.7s linear infinite;
 }
 
-/* "Open in viewer" chips under a tool-group summary */
-.toolg-files {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 2px 0 4px 6px;
-}
-.toolg-file {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 240px;
-  padding: 3px 7px;
-  border-radius: 7px;
-  border: none;
-  background: color-mix(in srgb, var(--txt) 6%, transparent);
-  color: var(--txt-2);
-  font-size: 12px;
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.toolg-file:hover {
-  color: var(--txt);
-  background: color-mix(in srgb, var(--txt) 12%, transparent);
-}
-
 /* ---------- light-theme definition ----------
    The dark design leans on translucent-white overlays that disappear on a
    light background, so these add visible borders in light mode only. */
