@@ -113,6 +113,7 @@ export interface BrowserTab {
   title: string
   active: boolean
   loading: boolean
+  favicon?: string
 }
 
 export interface ImportResult {

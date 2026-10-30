@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { ConsoleView } from './views/ConsoleView'
 import { ChatView } from './views/ChatView'
-import { BrowserView } from './views/BrowserView'
+import { BrowserPanel } from './components/BrowserPanel'
 import { SettingsView } from './views/SettingsView'
 import { AgentsManager } from './components/AgentsManager'
 import { TerminalPanel } from './components/TerminalPanel'
@@ -12,7 +12,7 @@ import { applyLanguage, applyTheme } from './lib/appearance'
 import type { SettingsTabId } from './lib/commands'
 import type { Agent, Group, ModelRef, Session } from './lib/api'
 
-type View = 'console' | 'chat' | 'settings' | 'browser'
+type View = 'console' | 'chat' | 'settings'
 
 /** localStorage helpers that no-op safely (private mode / disabled storage). */
 function loadLS(key: string): string | null {
@@ -63,6 +63,13 @@ export function App() {
     return n >= 320 && n <= 2000 ? n : 480
   })
   useEffect(() => saveLS('bh.termWidth', String(termWidth)), [termWidth])
+  // In-app browser side panel (toggled from the composer's 🌐 button).
+  const [browserOpen, setBrowserOpen] = useState(false)
+  const [browserWidth, setBrowserWidth] = useState<number>(() => {
+    const n = Number(loadLS('bh.browserWidth'))
+    return n >= 340 && n <= 2400 ? n : 620
+  })
+  useEffect(() => saveLS('bh.browserWidth', String(browserWidth)), [browserWidth])
   const [models, setModels] = useState<ModelRef[]>([])
   // Console selections persist across refresh/restart. Sessions keep their OWN
   // workspace (stored server-side), so this is only the default for new sessions.
@@ -256,14 +263,23 @@ export function App() {
   // The terminal opens in the active session's workspace, or the console's selected one.
   const termCwd = view === 'chat' && session ? session.workspace : workspace
 
+  // Grid columns: sidebar? · main · browser? · terminal? (right-docked panels).
+  const gridCols =
+    browserOpen || terminalOpen
+      ? [
+          sidebarCollapsed ? null : '264px',
+          'minmax(0, 1fr)',
+          browserOpen ? `${browserWidth}px` : null,
+          terminalOpen ? `${termWidth}px` : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
+      : undefined
+
   return (
     <div
       className={sidebarCollapsed ? 'app collapsed' : 'app'}
-      style={
-        terminalOpen
-          ? { gridTemplateColumns: `${sidebarCollapsed ? '' : '264px '}minmax(0, 1fr) ${termWidth}px` }
-          : undefined
-      }
+      style={gridCols ? { gridTemplateColumns: gridCols } : undefined}
     >
       {sidebarCollapsed ? (
         <button className="expand-side" aria-label="Show sidebar" title="Show sidebar" onClick={() => setSidebarCollapsed(false)}>
@@ -305,7 +321,7 @@ export function App() {
             onOpenSettings={openSettings}
             agents={agents}
             onOpenAgents={setAgentsView}
-            onBrowser={() => setView('browser')}
+            onBrowser={() => setBrowserOpen((v) => !v)}
             onTerminal={() => setTerminalOpen((v) => !v)}
           />
         )}
@@ -332,11 +348,10 @@ export function App() {
             onNewSession={newSession}
             agents={agents}
             onOpenAgents={setAgentsView}
-            onBrowser={() => setView('browser')}
+            onBrowser={() => setBrowserOpen((v) => !v)}
             onTerminal={() => setTerminalOpen((v) => !v)}
           />
         )}
-        {view === 'browser' && <BrowserView onClose={() => setView(session ? 'chat' : 'console')} />}
         {view === 'settings' && (
           <SettingsView
             initialTab={settingsTab}
@@ -351,6 +366,10 @@ export function App() {
           />
         )}
       </main>
+
+      {browserOpen && (
+        <BrowserPanel width={browserWidth} onWidth={setBrowserWidth} onClose={() => setBrowserOpen(false)} />
+      )}
 
       <TerminalPanel
         open={terminalOpen}

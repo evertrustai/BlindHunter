@@ -22,6 +22,8 @@ export interface TabInfo {
   title: string
   active: boolean
   loading: boolean
+  /** Absolute URL of the page's favicon (best-effort; '' if none). */
+  favicon: string
 }
 
 interface Tab {
@@ -197,6 +199,23 @@ function info(tab: Tab): TabInfo {
     title: '',
     active: tab.id === activeId,
     loading: tab.loading,
+    favicon: '',
+  }
+}
+
+/** In-page: the best declared favicon href (absolute), else the origin's /favicon.ico. */
+const FAVICON_JS = `(() => {
+  const links = Array.from(document.querySelectorAll('link[rel~="icon"],link[rel="shortcut icon"],link[rel="apple-touch-icon"]'));
+  const href = links.map((l) => l.href).find(Boolean);
+  if (href) return href;
+  return location.origin && location.origin !== 'null' ? location.origin + '/favicon.ico' : '';
+})()`
+
+async function faviconOf(tab: Tab): Promise<string> {
+  try {
+    return ((await tab.page.evaluate(FAVICON_JS)) as string) || ''
+  } catch {
+    return ''
   }
 }
 
@@ -209,7 +228,7 @@ export async function listTabs(): Promise<TabInfo[]> {
     } catch {
       // page navigating — leave blank
     }
-    out.push({ ...info(tab), title })
+    out.push({ ...info(tab), title, favicon: await faviconOf(tab) })
   }
   return out
 }
