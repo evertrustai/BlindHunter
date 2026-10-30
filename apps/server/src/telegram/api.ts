@@ -10,7 +10,16 @@ export interface TgUpdate {
     chat: { id: number; type: string }
     from?: { id: number; username?: string; first_name?: string }
   }
+  callback_query?: {
+    id: string
+    data?: string
+    from?: { id: number }
+    message?: { message_id: number; chat: { id: number } }
+  }
 }
+
+/** An inline-keyboard button grid for reply_markup. */
+export type InlineKeyboard = { inline_keyboard: { text: string; callback_data: string }[][] }
 
 async function call<T>(token: string, method: string, params?: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${BASE}/bot${token}/${method}`, {
@@ -29,13 +38,30 @@ export function getMe(token: string): Promise<{ id: number; username?: string; f
   return call(token, 'getMe')
 }
 
-/** Long-poll for updates since `offset`. Resolves after `timeout`s or when a message arrives. */
+/** Long-poll for updates since `offset`. Resolves after `timeout`s or when an update arrives. */
 export function getUpdates(token: string, offset: number, timeout: number, signal?: AbortSignal): Promise<TgUpdate[]> {
-  return call<TgUpdate[]>(token, 'getUpdates', { offset, timeout, allowed_updates: ['message'] }, signal)
+  return call<TgUpdate[]>(token, 'getUpdates', { offset, timeout, allowed_updates: ['message', 'callback_query'] }, signal)
 }
 
-export function sendMessage(token: string, chatId: number, text: string): Promise<{ message_id: number }> {
-  return call(token, 'sendMessage', { chat_id: chatId, text, disable_web_page_preview: true })
+export function sendMessage(
+  token: string,
+  chatId: number,
+  text: string,
+  replyMarkup?: InlineKeyboard,
+): Promise<{ message_id: number }> {
+  return call(token, 'sendMessage', {
+    chat_id: chatId,
+    text,
+    disable_web_page_preview: true,
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  })
+}
+
+/** Acknowledge a button tap (removes the loading spinner on the client). */
+export function answerCallbackQuery(token: string, callbackQueryId: string, text?: string): Promise<unknown> {
+  return call(token, 'answerCallbackQuery', { callback_query_id: callbackQueryId, ...(text ? { text } : {}) }).catch(
+    () => undefined,
+  )
 }
 
 export function editMessageText(token: string, chatId: number, messageId: number, text: string): Promise<unknown> {

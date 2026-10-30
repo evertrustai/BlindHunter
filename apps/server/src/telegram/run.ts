@@ -4,7 +4,7 @@ import { getAgent, listSubagents } from '../agents/store.js'
 import { mcpExtraTools } from '../mcp/manager.js'
 import { runAgent } from '../agent/loop.js'
 import { startRun, subscribe, stopRun, isRunning } from '../agent/runs.js'
-import { createSession, getSession, addMessages } from '../sessions/store.js'
+import { createSession, getSession, addMessages, listSessions } from '../sessions/store.js'
 import { recordUsage } from '../usage/store.js'
 import { getValidToken } from '../auth/claude.js'
 import { getValidToken as getCodexToken, getAccountId as getCodexAccountId } from '../auth/codex.js'
@@ -28,6 +28,34 @@ export function stopChat(chatId: number): boolean {
 export function chatIsRunning(chatId: number): boolean {
   const id = chatSessions.get(chatId)
   return id ? isRunning(id) : false
+}
+
+/** The session this chat is currently pointed at (for marking the active one in a list). */
+export function getChatSessionId(chatId: number): string | undefined {
+  return chatSessions.get(chatId)
+}
+
+/** Recent sessions (any origin — web or Telegram), newest first, for the /sessions list. */
+export function listRecentSessions(limit = 12): { id: string; title: string; running: boolean }[] {
+  return listSessions()
+    .slice(0, limit)
+    .map((s) => ({ id: s.id, title: s.title || 'Untitled', running: isRunning(s.id) }))
+}
+
+/**
+ * Point this chat at an existing session so the next prompt continues it. Works for any
+ * session, including ones started in the BlindHunter web UI. Returns a short preview.
+ */
+export function setChatSession(chatId: number, sessionId: string): { ok: boolean; title?: string; preview?: string } {
+  const s = getSession(sessionId)
+  if (!s) return { ok: false }
+  chatSessions.set(chatId, sessionId)
+  const lastAssistant = [...s.messages]
+    .reverse()
+    .find((m) => m.role === 'assistant' && typeof m.content === 'string' && m.content.trim())
+  const preview =
+    lastAssistant && typeof lastAssistant.content === 'string' ? lastAssistant.content.slice(0, 350) : undefined
+  return { ok: true, title: s.title || 'Untitled', preview }
 }
 
 export interface TurnCallbacks {

@@ -1,6 +1,14 @@
 import { loadSettings, loadCredentials, updateSettings } from '../config/store.js'
-import { getUpdates, sendMessage, editMessageText, chunk, type TgUpdate } from './api.js'
-import { runTelegramTurn, resetChatSession, stopChat, chatIsRunning } from './run.js'
+import { getUpdates, sendMessage, editMessageText, answerCallbackQuery, chunk, type TgUpdate, type InlineKeyboard } from './api.js'
+import {
+  runTelegramTurn,
+  resetChatSession,
+  stopChat,
+  chatIsRunning,
+  listRecentSessions,
+  setChatSession,
+  getChatSessionId,
+} from './run.js'
 
 /**
  * Telegram bot runner. Uses long polling (getUpdates) so it works from a localhost /
@@ -46,6 +54,7 @@ async function pollLoop(token: string): Promise<void> {
       for (const u of updates) {
         offset = u.update_id + 1
         if (u.message) void handleMessage(token, u.message)
+        else if (u.callback_query) void handleCallback(token, u.callback_query)
       }
     } catch {
       if (!running) break
@@ -56,6 +65,7 @@ async function pollLoop(token: string): Promise<void> {
 
 const HELP =
   "BlindHunter bot — send a prompt or task and I'll run it on your machine.\n\n" +
+  '/sessions — list & open any session (web or bot)\n' +
   '/new — start a fresh session\n' +
   '/stop — stop the current task\n' +
   '/help — show this message'
@@ -99,6 +109,20 @@ async function handleMessage(token: string, msg: NonNullable<TgUpdate['message']
   if (!text) return
 
   if (text === '/start' || text === '/help') return void sendMessage(token, chatId, HELP)
+  if (text === '/sessions' || text === '/list') {
+    const active = getChatSessionId(chatId)
+    const sessions = listRecentSessions(12)
+    if (!sessions.length) return void sendMessage(token, chatId, 'No sessions yet — send a prompt to start one.')
+    const keyboard: InlineKeyboard = {
+      inline_keyboard: sessions.map((s) => [
+        {
+          text: `${s.id === active ? '✅ ' : ''}${s.running ? '🟡 ' : ''}${s.title}`.slice(0, 60),
+          callback_data: `open:${s.id}`,
+        },
+      ]),
+    }
+    return void sendMessage(token, chatId, '📂 Your sessions — tap one to continue it (🟡 = running):', keyboard)
+  }
   if (text === '/new') {
     resetChatSession(chatId)
     return void sendMessage(token, chatId, '🆕 Started a fresh session.')
@@ -136,4 +160,28 @@ async function handleMessage(token: string, msg: NonNullable<TgUpdate['message']
       void sendMessage(token, chatId, `⚠️ ${message}`)
     },
   })
+}
+
+/** Handle an inline-keyboard button tap (currently: opening a session from /sessions). */
+async function handleCallback(token: string, cq: NonNullable<TgUpdate['callback_query']>): Promise<void> {
+  const chatId = cq.message?.chat.id
+  const fromId = cq.from?.id
+  const data = cq.data ?? ''
+  if (!chatId || !fromId) return void answerCallbackQuery(token, cq.id)
+
+  // Only the paired owner may switch sessions.
+  const tg = (await loadSettings()).telegram
+  if (!tg?.ownerId || fromId !== tg.ownerId) return void answerCallbackQuery(token, cq.id)
+
+  if (data.startsWith('open:')) {
+    const sessionId = data.slice(5)
+    const r = setChatSession(chatId, sessionId)
+    if (!r.ok) return void answerCallbackQuery(token, cq.id, 'That session no longer exists.')
+    await answerCallbackQuery(token, cq.id, 'Switched')
+    let out = `📂 Now on: ${r.title}\nSend a message to continue this session.`
+    if (r.preview) out += `\n\n— last reply —\n${r.preview}${r.preview.length >= 350 ? '…' : ''}`
+    for (const part of chunk(out)) await sendMessage(token, chatId, part)
+    return
+  }
+  await answerCallbackQuery(token, cq.id)
 }
