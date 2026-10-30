@@ -1101,3 +1101,70 @@ a.ab-v:hover {
   color: var(--txt);
   margin: 16px 0 6px;
 }
+
+/* ---------- code appearance picker ---------- */
+.ctp-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt-2);
+  margin: 12px 0 8px;
+  letter-spacing: 0.02em;
+}
+.ctp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.ctp-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: var(--ct-bg);
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.ctp-card:hover {
+  border-color: var(--txt-3);
+}
+.ctp-card.on {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px var(--amber-soft);
+}
+.ctp-code {
+  margin: 0;
+  padding: 11px 13px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow: hidden;
+  height: 104px;
+  background: var(--ct-bg);
+  color: var(--ct-fg);
+}
+.ctp-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--txt);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.ctp-nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctp-check {
+  flex: none;
+  color: var(--amber-2);
+  font-weight: 700;
+}

@@ -19,7 +19,6 @@ import cpp from 'highlight.js/lib/languages/cpp'
 import ruby from 'highlight.js/lib/languages/ruby'
 import ini from 'highlight.js/lib/languages/ini'
 import dockerfile from 'highlight.js/lib/languages/dockerfile'
-import 'highlight.js/styles/github-dark.css'
 import { api } from '../lib/api'
 import type { FileView } from '../lib/api'
 

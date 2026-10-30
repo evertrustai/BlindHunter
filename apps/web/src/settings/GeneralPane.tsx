@@ -4,6 +4,7 @@ import type { AppSettings } from '../lib/api'
 import { applyLanguage, applyTheme } from '../lib/appearance'
 import { useT } from '../lib/i18n'
 import { TokenActivity } from '../components/TokenActivity'
+import { CodeThemePicker } from './CodeThemePicker'
 
 const LANGS: { code: string; label: string }[] = [
   { code: 'en', label: 'English' },
@@ -90,6 +91,8 @@ export function GeneralPane() {
           <option value="light">{t('Light')}</option>
         </select>
       </div>
+
+      <CodeThemePicker />
 
       <div className="grouphdr">{t('Agent environment')}</div>
       <div className="setrow">
