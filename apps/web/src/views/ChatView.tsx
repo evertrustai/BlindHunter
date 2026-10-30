@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api, streamMessage, subscribeStream, baseName } from '../lib/api'
 import type { ModelRef, Session, Usage, AgentEvent } from '../lib/api'
 import { ComposerBar } from '../components/ComposerBar'
@@ -9,6 +9,7 @@ import { Markdown } from '../components/Markdown'
 import { explainError } from '../lib/errors'
 import { useComposer } from '../hooks/useComposer'
 import { useSlashMenu } from '../hooks/useSlashMenu'
+import { useSkillCommands } from '../hooks/useSkillCommands'
 import { useMentionMenu } from '../hooks/useMentionMenu'
 import { SLASH_COMMANDS } from '../lib/commands'
 import type { SlashCommand, SettingsTabId } from '../lib/commands'
@@ -238,7 +239,9 @@ export function ChatView({
   const turnStartRef = useRef(0)
   const timerRef = useRef<number | null>(null)
   const c = useComposer()
-  const slash = useSlashMenu(c.text, CHAT_COMMANDS)
+  const skillCmds = useSkillCommands()
+  const allCommands = useMemo(() => [...CHAT_COMMANDS, ...skillCmds], [skillCmds])
+  const slash = useSlashMenu(c.text, allCommands)
   const mention = useMentionMenu(c.text, c.setText, agents)
   const [activeAgentId, setActiveAgentId] = useState<string | null | undefined>(session.agentId)
   const activeAgent = agents.find((a) => a.id === activeAgentId) ?? agents.find((a) => a.builtin)
@@ -468,6 +471,11 @@ export function ChatView({
   }
 
   function runCommand(cmd: SlashCommand) {
+    // A skill: drop its /command into the prompt and let the user add the target/task.
+    if (cmd.kind === 'skill') {
+      c.setText(`/${cmd.id} `)
+      return
+    }
     c.setText('')
     switch (cmd.id) {
       case 'new-session':

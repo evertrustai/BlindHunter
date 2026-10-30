@@ -149,6 +149,20 @@ export interface RunOpts {
 export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
   const subagents = opts.subagents ?? []
   const canDelegate = opts.canDelegate !== false
+  // Manual skill invocation: if the message starts with a known /skill-command, inject that
+  // skill's full playbook up front so it's applied deterministically (not left to the model to
+  // notice). Unknown /commands pass through unchanged.
+  let effectiveUserMessage = opts.userMessage
+  const skillMatch = /^\/([a-z0-9._-]+)\b[ \t]*([\s\S]*)$/i.exec(opts.userMessage ?? '')
+  if (skillMatch) {
+    const body = skillBody(skillMatch[1])
+    if (body) {
+      const rest = skillMatch[2].trim()
+      effectiveUserMessage =
+        `The user invoked the /${skillMatch[1]} skill — follow this playbook:\n\n${body}\n\n---\n` +
+        `User's request: ${rest || '(apply this skill to the current target/context)'}`
+    }
+  }
   const messages: ChatMessage[] = [
     {
       role: 'system',
@@ -169,10 +183,10 @@ export async function* runAgent(opts: RunOpts): AsyncGenerator<AgentEvent> {
       // vision-capable model sees them; otherwise a plain text message.
       content: opts.userImages?.length
         ? [
-            ...(opts.userMessage ? [{ type: 'text' as const, text: opts.userMessage }] : []),
+            ...(effectiveUserMessage ? [{ type: 'text' as const, text: effectiveUserMessage }] : []),
             ...opts.userImages.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
           ]
-        : opts.userMessage,
+        : effectiveUserMessage,
     },
   ]
   // The step budget is a runaway guard, not a target — the model stops on its own when

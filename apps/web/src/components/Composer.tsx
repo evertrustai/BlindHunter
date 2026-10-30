@@ -5,9 +5,11 @@ import { Attachments } from './Attachments'
 import { SlashMenu } from './SlashMenu'
 import { useComposer } from '../hooks/useComposer'
 import { useSlashMenu } from '../hooks/useSlashMenu'
+import { useSkillCommands } from '../hooks/useSkillCommands'
 import { useMentionMenu } from '../hooks/useMentionMenu'
 import { SLASH_COMMANDS } from '../lib/commands'
 import { api } from '../lib/api'
+import { useMemo } from 'react'
 import { useT } from '../lib/i18n'
 import type { SlashCommand, SettingsTabId } from '../lib/commands'
 import type { ModelRef, Agent } from '../lib/api'
@@ -53,7 +55,9 @@ export function Composer({
 }: ComposerProps) {
   const t = useT()
   const c = useComposer()
-  const slash = useSlashMenu(c.text, COMMANDS)
+  const skillCmds = useSkillCommands()
+  const allCommands = useMemo(() => [...COMMANDS, ...skillCmds], [skillCmds])
+  const slash = useSlashMenu(c.text, allCommands)
   const mention = useMentionMenu(c.text, c.setText, agents)
   const canSend = Boolean((c.text.trim() || c.attachments.length) && workspace && selectedModel)
   const topAgents = agents.filter((a) => a.kind === 'agent')
@@ -72,6 +76,11 @@ export function Composer({
   }
 
   async function runCommand(cmd: SlashCommand) {
+    // A skill: drop its /command into the prompt and let the user add the target/task.
+    if (cmd.kind === 'skill') {
+      c.setText(`/${cmd.id} `)
+      return
+    }
     c.setText('')
     switch (cmd.id) {
       case 'open-folder': {

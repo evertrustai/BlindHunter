@@ -13,6 +13,8 @@ export interface SlashCommand {
   id: string
   label: string
   caption: string
+  /** 'skill' commands insert their /command into the prompt; the rest run an app action. */
+  kind?: 'skill'
 }
 
 /** Every "/" command. Composer/ChatView each filter out the ones that don't apply to them. */
