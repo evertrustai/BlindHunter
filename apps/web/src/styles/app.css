@@ -1113,12 +1113,12 @@
 .toolg-file {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   max-width: 240px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--line-2);
-  background: var(--panel);
+  padding: 3px 7px;
+  border-radius: 7px;
+  border: none;
+  background: color-mix(in srgb, var(--txt) 6%, transparent);
   color: var(--txt-2);
   font-size: 12px;
   cursor: pointer;
@@ -1127,9 +1127,8 @@
   white-space: nowrap;
 }
 .toolg-file:hover {
-  border-color: var(--amber);
   color: var(--txt);
-  background: var(--raised);
+  background: color-mix(in srgb, var(--txt) 12%, transparent);
 }
 
 /* ---------- light-theme definition ----------
