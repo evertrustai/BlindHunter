@@ -12,6 +12,18 @@ import { isClaudeApiKey, anthropicAuthHeaders } from '../auth/claude.js'
 
 const API_URL = 'https://api.anthropic.com/v1/messages'
 const MAX_TOKENS = 8192
+const MAX_ATTEMPTS = 3
+
+/** A transient connection/DNS blip worth retrying (not a user abort, not an HTTP error). */
+export function isTransientNetwork(e: unknown): boolean {
+  if (e instanceof DOMException && e.name === 'AbortError') return false
+  const msg = e instanceof Error ? e.message : String(e)
+  if (/abort/i.test(msg)) return false
+  const code = (e as { cause?: { code?: string } })?.cause?.code ?? ''
+  return /fetch failed|network|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|UND_ERR|socket hang up|terminated/i.test(
+    `${msg} ${code}`,
+  )
+}
 
 type Block =
   | { type: 'text'; text: string }
@@ -115,48 +127,61 @@ export async function* streamAnthropic(opts: StreamOpts): AsyncGenerator<StreamD
   }
   const usingApiKey = isClaudeApiKey(opts.apiKey)
   const { system, messages, tools } = toAnthropic(opts.messages, opts.tools, !usingApiKey)
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'anthropic-version': '2023-06-01',
-      ...anthropicAuthHeaders(opts.apiKey),
-      ...(opts.headers ?? {}),
-    },
-    body: JSON.stringify({
-      model: opts.model,
-      max_tokens: MAX_TOKENS,
-      system,
-      messages,
-      ...(tools.length ? { tools } : {}),
-      stream: true,
-    }),
-    signal: opts.signal,
+  const headers = {
+    'content-type': 'application/json',
+    'anthropic-version': '2023-06-01',
+    ...anthropicAuthHeaders(opts.apiKey),
+    ...(opts.headers ?? {}),
+  }
+  const body = JSON.stringify({
+    model: opts.model,
+    max_tokens: MAX_TOKENS,
+    system,
+    messages,
+    ...(tools.length ? { tools } : {}),
+    stream: true,
   })
 
-  if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => '')
-    let msg = text.slice(0, 500)
-    let type = ''
+  // Retry a transient connection/server blip at the START of the turn (before any output) —
+  // a single "fetch failed" shouldn't leave the model silent. (No retry once streaming begins.)
+  let res: Response | undefined
+  for (let attempt = 1; ; attempt++) {
     try {
-      const j = JSON.parse(text) as { error?: { message?: string; type?: string } }
-      msg = j.error?.message ?? msg
-      type = j.error?.type ?? ''
-    } catch {
-      /* keep raw text */
+      res = await fetch(API_URL, { method: 'POST', headers, body, signal: opts.signal })
+    } catch (e) {
+      if (attempt < MAX_ATTEMPTS && isTransientNetwork(e)) {
+        await new Promise((r) => setTimeout(r, 400 * attempt))
+        continue
+      }
+      throw e
     }
-    // Anthropic returns a terse rate_limit_error ("Error") when it throttles a subscription
-    // token — usually the Claude Pro/Max usage limit for the current window, which resets on a
-    // rolling basis. Spell that out instead of surfacing the opaque body.
-    if (res.status === 429 || type === 'rate_limit_error') {
-      throw new Error(
-        'Claude is rate-limiting this request (429). Your Claude subscription usage limit for the current window is likely reached — it resets on a rolling basis, so wait a bit and try again. Note that Claude Code usage on the same plan counts toward the same limit.',
-      )
+    if (!res.ok || !res.body) {
+      const text = await res.text().catch(() => '')
+      let msg = text.slice(0, 500)
+      let type = ''
+      try {
+        const j = JSON.parse(text) as { error?: { message?: string; type?: string } }
+        msg = j.error?.message ?? msg
+        type = j.error?.type ?? ''
+      } catch {
+        /* keep raw text */
+      }
+      if (res.status === 429 || type === 'rate_limit_error') {
+        throw new Error(
+          'Claude is rate-limiting this request (429). Wait a moment and try again; if it persists, the subscription may be throttled for this usage.',
+        )
+      }
+      // Transient server errors (overloaded / gateway) — retry before giving up.
+      if (attempt < MAX_ATTEMPTS && [500, 502, 503, 529].includes(res.status)) {
+        await new Promise((r) => setTimeout(r, 400 * attempt))
+        continue
+      }
+      throw new Error(`Provider error ${res.status}: ${msg || type || 'request failed'}`)
     }
-    throw new Error(`Provider error ${res.status}: ${msg || type || 'request failed'}`)
+    break
   }
 
-  const reader = res.body.getReader()
+  const reader = res!.body!.getReader()
   const decoder = new TextDecoder()
   let buf = ''
   let promptTokens = 0

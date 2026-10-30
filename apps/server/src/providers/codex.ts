@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { ChatMessage, ContentPart, ToolCallRef } from '../agent/types.js'
 import type { StreamOpts, StreamDelta, ToolSchema } from './openai.js'
+import { isTransientNetwork } from './anthropic.js'
 
 /**
  * ChatGPT (Codex) adapter. A connected ChatGPT subscription (auth/codex.ts) talks to the
@@ -71,30 +72,42 @@ export async function* streamCodex(opts: StreamOpts): AsyncGenerator<StreamDelta
   const { instructions, input } = toResponses(opts.messages)
   const tools = toResponsesTools(opts.tools)
 
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      accept: 'text/event-stream',
-      authorization: `Bearer ${opts.apiKey}`,
-      originator: ORIGINATOR,
-      'openai-beta': 'responses=experimental',
-      'user-agent': UA,
-      session_id: randomUUID(),
-      ...(opts.headers ?? {}),
-    },
-    body: JSON.stringify({
-      model: opts.model,
-      instructions,
-      input,
-      ...(tools.length ? { tools, tool_choice: 'auto', parallel_tool_calls: true } : {}),
-      store: false,
-      stream: true,
-      include: ['reasoning.encrypted_content'],
-      max_output_tokens: MAX_TOKENS,
-    }),
-    signal: opts.signal,
+  const headers = {
+    'content-type': 'application/json',
+    accept: 'text/event-stream',
+    authorization: `Bearer ${opts.apiKey}`,
+    originator: ORIGINATOR,
+    'openai-beta': 'responses=experimental',
+    'user-agent': UA,
+    session_id: randomUUID(),
+    ...(opts.headers ?? {}),
+  }
+  const body = JSON.stringify({
+    model: opts.model,
+    instructions,
+    input,
+    ...(tools.length ? { tools, tool_choice: 'auto', parallel_tool_calls: true } : {}),
+    store: false,
+    stream: true,
+    include: ['reasoning.encrypted_content'],
+    max_output_tokens: MAX_TOKENS,
   })
+
+  // Retry a transient connection blip at the start of the turn (before any output).
+  let res: Response | undefined
+  for (let attempt = 1; ; attempt++) {
+    try {
+      res = await fetch(API_URL, { method: 'POST', headers, body, signal: opts.signal })
+      break
+    } catch (e) {
+      if (attempt < 3 && isTransientNetwork(e)) {
+        await new Promise((r) => setTimeout(r, 400 * attempt))
+        continue
+      }
+      throw e
+    }
+  }
+  if (!res) throw new Error('No response from Codex backend.')
 
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => '')
