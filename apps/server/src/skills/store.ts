@@ -55,6 +55,16 @@ function parseSkill(dir: string): Skill | null {
     const dm = /\bdescription:\s*([\s\S]*?)(?:\n[A-Za-z_][\w-]*:\s|\s*$)/.exec(fm[1])
     if (dm) description = dm[1].trim().replace(/^[>|]\s*/, '').replace(/^["']|["']$/g, '').replace(/\s+/g, ' ')
   }
+  // Some skills have no frontmatter description (or no frontmatter at all) — fall back to the
+  // first real paragraph of the body so every skill still gets a meaningful one-liner.
+  if (!description) {
+    const body = fm ? md.slice(fm[0].length) : md
+    const para = body
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find((l) => l && !l.startsWith('#') && !l.startsWith('---') && !l.startsWith('```') && !l.startsWith('>'))
+    if (para) description = para.replace(/[*_`]/g, '').replace(/\s+/g, ' ')
+  }
   const command = name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
   const supporting: string[] = []
   try {
