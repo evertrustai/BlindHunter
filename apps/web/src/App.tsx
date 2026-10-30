@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar'
 import { ConsoleView } from './views/ConsoleView'
 import { ChatView } from './views/ChatView'
 import { BrowserPanel } from './components/BrowserPanel'
+import { FileViewerPanel, fileKey, type OpenFile } from './components/FileViewerPanel'
 import { SettingsView } from './views/SettingsView'
 import { AgentsManager } from './components/AgentsManager'
 import { TerminalPanel } from './components/TerminalPanel'
@@ -70,6 +71,29 @@ export function App() {
     return n >= 340 && n <= 2400 ? n : 620
   })
   useEffect(() => saveLS('bh.browserWidth', String(browserWidth)), [browserWidth])
+  // File viewer side panel — opened by clicking a file the agent wrote/read in chat.
+  const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
+  const [activeFile, setActiveFile] = useState<string | null>(null)
+  const [fileWidth, setFileWidth] = useState<number>(() => {
+    const n = Number(loadLS('bh.fileWidth'))
+    return n >= 360 && n <= 2400 ? n : 640
+  })
+  useEffect(() => saveLS('bh.fileWidth', String(fileWidth)), [fileWidth])
+
+  /** Open a file (from a chat tool) in the viewer panel, de-duping already-open tabs. */
+  function openFile(filePath: string, cwd: string) {
+    const f: OpenFile = { path: filePath, cwd }
+    const key = fileKey(f)
+    setOpenFiles((list) => (list.some((x) => fileKey(x) === key) ? list : [...list, f]))
+    setActiveFile(key)
+  }
+  function closeFile(key: string) {
+    setOpenFiles((list) => {
+      const rest = list.filter((x) => fileKey(x) !== key)
+      setActiveFile((a) => (a !== key ? a : rest.length ? fileKey(rest[rest.length - 1]) : null))
+      return rest
+    })
+  }
   const [models, setModels] = useState<ModelRef[]>([])
   // Console selections persist across refresh/restart. Sessions keep their OWN
   // workspace (stored server-side), so this is only the default for new sessions.
@@ -263,12 +287,14 @@ export function App() {
   // The terminal opens in the active session's workspace, or the console's selected one.
   const termCwd = view === 'chat' && session ? session.workspace : workspace
 
-  // Grid columns: sidebar? · main · browser? · terminal? (right-docked panels).
+  // Grid columns: sidebar? · main · file? · browser? · terminal? (right-docked panels).
+  const fileViewerOpen = openFiles.length > 0
   const gridCols =
-    browserOpen || terminalOpen
+    fileViewerOpen || browserOpen || terminalOpen
       ? [
           sidebarCollapsed ? null : '264px',
           'minmax(0, 1fr)',
+          fileViewerOpen ? `${fileWidth}px` : null,
           browserOpen ? `${browserWidth}px` : null,
           terminalOpen ? `${termWidth}px` : null,
         ]
@@ -350,6 +376,7 @@ export function App() {
             onOpenAgents={setAgentsView}
             onBrowser={() => setBrowserOpen((v) => !v)}
             onTerminal={() => setTerminalOpen((v) => !v)}
+            onOpenFile={(p) => openFile(p, session.workspace)}
           />
         )}
         {view === 'settings' && (
@@ -366,6 +393,21 @@ export function App() {
           />
         )}
       </main>
+
+      {fileViewerOpen && (
+        <FileViewerPanel
+          files={openFiles}
+          activeKey={activeFile}
+          onActivate={setActiveFile}
+          onCloseFile={closeFile}
+          onClose={() => {
+            setOpenFiles([])
+            setActiveFile(null)
+          }}
+          width={fileWidth}
+          onWidth={setFileWidth}
+        />
+      )}
 
       {browserOpen && (
         <BrowserPanel width={browserWidth} onWidth={setBrowserWidth} onClose={() => setBrowserOpen(false)} />

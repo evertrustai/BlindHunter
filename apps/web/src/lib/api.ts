@@ -37,6 +37,16 @@ export interface FsList {
   entries: DirEntry[]
 }
 
+export interface FileView {
+  path: string
+  name: string
+  kind: 'text' | 'image' | 'binary'
+  size: number
+  truncated: boolean
+  content?: string
+  error?: string
+}
+
 export interface Session {
   id: string
   title: string
@@ -276,6 +286,14 @@ export const api = {
   telegramDisconnect: () => fetch('/api/telegram/disconnect', { method: 'POST' }).then((r) => json<{ ok: boolean }>(r)),
   listDir: (path?: string) =>
     fetch(`/api/fs/list${path ? `?path=${encodeURIComponent(path)}` : ''}`).then((r) => json<FsList>(r)),
+  // Read a file for the viewer (text content + metadata, or an image/binary marker).
+  readFileView: (path: string, cwd?: string) =>
+    fetch(`/api/fs/read?path=${encodeURIComponent(path)}${cwd ? `&cwd=${encodeURIComponent(cwd)}` : ''}`).then((r) =>
+      json<FileView>(r),
+    ),
+  // Raw-bytes URL for an image file (screenshots etc.), resolved against the workspace.
+  rawFileUrl: (path: string, cwd?: string) =>
+    `/api/fs/raw?path=${encodeURIComponent(path)}${cwd ? `&cwd=${encodeURIComponent(cwd)}` : ''}`,
   pickFolder: () =>
     fetch('/api/fs/pick-folder', { method: 'POST' }).then((r) => json<{ path: string | null; error?: string }>(r)),
   createSession: (input: Partial<Session>) =>

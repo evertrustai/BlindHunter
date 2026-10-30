@@ -91,10 +91,33 @@ function summarizeTools(tools: ToolItem[]): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+/** A file a tool produced/touched that the viewer can open (deduped per group). */
+function openableFile(t: ToolItem): { name: string; path: string } | null {
+  if (t.name === 'write_file' || t.name === 'edit_file' || t.name === 'read_file') {
+    try {
+      const a = JSON.parse(t.args || '{}') as { path?: string }
+      if (typeof a.path === 'string' && a.path) return { name: baseName(a.path), path: a.path }
+    } catch {
+      /* unparsable args */
+    }
+  }
+  if (t.name === 'browser_screenshot' && t.result) {
+    const m = /screenshot saved:\s*(.+?)\s*\(/.exec(t.result)
+    if (m) return { name: baseName(m[1]), path: m[1] }
+  }
+  return null
+}
+
 /** A collapsed, borderless summary line for a run of tool calls; expands to clean output. */
-const ToolGroup = memo(function ToolGroup({ tools }: { tools: ToolItem[] }) {
+const ToolGroup = memo(function ToolGroup({ tools, onOpenFile }: { tools: ToolItem[]; onOpenFile?: (path: string) => void }) {
   const [open, setOpen] = useState(false)
   const running = tools.some((t) => t.result === undefined && t.approval !== 'rejected')
+  // Distinct files this run touched, so you can open any of them in the viewer.
+  const openables = onOpenFile
+    ? Array.from(
+        new Map(tools.map(openableFile).filter((f): f is { name: string; path: string } => !!f).map((f) => [f.path, f])).values(),
+      )
+    : []
   return (
     <div className="toolg">
       <button className="toolg-head" onClick={() => setOpen((o) => !o)}>
@@ -102,6 +125,15 @@ const ToolGroup = memo(function ToolGroup({ tools }: { tools: ToolItem[] }) {
         {running && <span className="toolg-spin" />}
         <span className={open ? 'toolg-cv open' : 'toolg-cv'}>›</span>
       </button>
+      {openables.length > 0 && (
+        <div className="toolg-files">
+          {openables.map((f) => (
+            <button key={f.path} className="toolg-file" title={`Open ${f.path}`} onClick={() => onOpenFile?.(f.path)}>
+              {/\.(png|jpe?g|gif|webp|bmp|ico|avif|svg)$/i.test(f.path) ? '🖼' : '📄'} {f.name}
+            </button>
+          ))}
+        </div>
+      )}
       {open && (
         <div className="toolg-body">
           {tools.map((t, i) => {
@@ -206,6 +238,8 @@ interface ChatViewProps {
   onOpenAgents?: (kind: 'agent' | 'subagent') => void
   onBrowser?: () => void
   onTerminal?: () => void
+  /** Open a file (that a tool wrote/read/captured) in the file viewer panel. */
+  onOpenFile?: (path: string) => void
 }
 
 export function ChatView({
@@ -228,6 +262,7 @@ export function ChatView({
   onOpenAgents,
   onBrowser,
   onTerminal,
+  onOpenFile,
 }: ChatViewProps) {
   const [items, setItems] = useState<Item[]>([])
   const [streaming, setStreaming] = useState(false)
@@ -563,7 +598,7 @@ export function ChatView({
             let batch: ToolItem[] = []
             const flush = () => {
               if (batch.length) {
-                nodes.push(<ToolGroup key={`g${batch[0].id}`} tools={batch} />)
+                nodes.push(<ToolGroup key={`g${batch[0].id}`} tools={batch} onOpenFile={onOpenFile} />)
                 batch = []
               }
             }
