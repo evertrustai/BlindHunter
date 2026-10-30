@@ -254,6 +254,8 @@ export const api = {
         pairingCode?: string
         defaultModel?: string
         defaultWorkspace?: string
+        transcription?: { baseUrl?: string; model?: string }
+        hasSttKey?: boolean
       }>(r),
     ),
   telegramConnect: (token: string) =>
@@ -261,7 +263,12 @@ export const api = {
       json<{ ok?: boolean; botUsername?: string; pairingCode?: string; error?: string }>(r),
     ),
   telegramRepair: () => fetch('/api/telegram/repair', { method: 'POST' }).then((r) => json<{ pairingCode?: string; error?: string }>(r)),
-  telegramSettings: (patch: { defaultModel?: string; defaultWorkspace?: string }) =>
+  telegramSettings: (patch: {
+    defaultModel?: string
+    defaultWorkspace?: string
+    transcription?: { baseUrl?: string; model?: string }
+    sttKey?: string
+  }) =>
     fetch('/api/telegram/settings', { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify(patch) }).then((r) =>
       json<{ ok: boolean }>(r),
     ),

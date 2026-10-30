@@ -42,6 +42,50 @@ export function listRecentSessions(limit = 12): { id: string; title: string; run
     .map((s) => ({ id: s.id, title: s.title || 'Untitled', running: isRunning(s.id) }))
 }
 
+/** Every "providerId/modelId" across enabled providers, for the /model picker. */
+export async function listEnabledModels(): Promise<{ ref: string; label: string }[]> {
+  const settings = await loadSettings()
+  const out: { ref: string; label: string }[] = []
+  for (const p of settings.providers) {
+    if (!p.enabled) continue
+    for (const m of p.models) out.push({ ref: `${p.id}/${m.id}`, label: `${p.displayName} · ${m.name || m.id}` })
+  }
+  return out
+}
+
+/** The model a Telegram run would use right now (TG default → global default → first enabled). */
+export async function currentTelegramModel(): Promise<{ ref: string; label: string } | null> {
+  const settings = await loadSettings()
+  const firstEnabled = settings.providers.find((p) => p.enabled && p.models.length)
+  const ref =
+    settings.telegram?.defaultModel ||
+    settings.defaultModel ||
+    (firstEnabled ? `${firstEnabled.id}/${firstEnabled.models[0].id}` : '')
+  if (!ref) return null
+  const found = (await listEnabledModels()).find((m) => m.ref === ref)
+  return found ?? { ref, label: ref }
+}
+
+/** The folder a Telegram run would use right now. */
+export async function currentTelegramWorkspace(): Promise<string> {
+  const settings = await loadSettings()
+  return settings.telegram?.defaultWorkspace || homedir()
+}
+
+/** Distinct workspaces seen across recent sessions, as quick-pick suggestions for /workspace. */
+export function listRecentWorkspaces(limit = 6): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const s of listSessions()) {
+    if (s.workspace && !seen.has(s.workspace)) {
+      seen.add(s.workspace)
+      out.push(s.workspace)
+      if (out.length >= limit) break
+    }
+  }
+  return out
+}
+
 /**
  * Point this chat at an existing session so the next prompt continues it. Works for any
  * session, including ones started in the BlindHunter web UI. Returns a short preview.

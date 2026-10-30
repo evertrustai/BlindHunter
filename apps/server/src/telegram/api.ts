@@ -9,6 +9,10 @@ export interface TgUpdate {
     text?: string
     chat: { id: number; type: string }
     from?: { id: number; username?: string; first_name?: string }
+    /** Voice note (OGG/Opus). */
+    voice?: TgAudio
+    /** Uploaded/forwarded audio file. */
+    audio?: TgAudio
   }
   callback_query?: {
     id: string
@@ -16,6 +20,15 @@ export interface TgUpdate {
     from?: { id: number }
     message?: { message_id: number; chat: { id: number } }
   }
+}
+
+/** A voice note or audio file attached to a message. */
+export interface TgAudio {
+  file_id: string
+  duration?: number
+  mime_type?: string
+  file_size?: number
+  file_name?: string
 }
 
 /** An inline-keyboard button grid for reply_markup. */
@@ -68,6 +81,18 @@ export function editMessageText(token: string, chatId: number, messageId: number
   return call(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text, disable_web_page_preview: true }).catch(
     () => undefined, // editing can fail (unchanged text / too old) — not fatal
   )
+}
+
+/** Resolve a file_id to a downloadable file_path (valid ~1h). */
+export function getFile(token: string, fileId: string): Promise<{ file_path?: string; file_size?: number }> {
+  return call(token, 'getFile', { file_id: fileId })
+}
+
+/** Download a file by the file_path returned from getFile. */
+export async function downloadFile(token: string, filePath: string, signal?: AbortSignal): Promise<Buffer> {
+  const res = await fetch(`${BASE}/file/bot${token}/${filePath}`, { signal })
+  if (!res.ok) throw new Error(`Telegram file download failed (${res.status})`)
+  return Buffer.from(await res.arrayBuffer())
 }
 
 /** Telegram caps messages at 4096 chars; split on boundaries so long output still sends. */

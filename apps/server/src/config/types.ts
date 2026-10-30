@@ -64,6 +64,17 @@ export interface TelegramConfig {
   defaultModel?: string
   /** Workspace folder Telegram-driven runs operate in. */
   defaultWorkspace?: string
+  /**
+   * Speech-to-text for voice messages. Speaks the OpenAI /audio/transcriptions API, so it
+   * works against a LOCAL whisper server (e.g. faster-whisper/Speaches — fully offline) or a
+   * cloud one. The API key (if any) lives in the credentials vault under `telegram_stt`.
+   */
+  transcription?: {
+    /** Base URL ending before /audio/transcriptions, e.g. http://localhost:8000/v1 */
+    baseUrl?: string
+    /** Transcription model id, e.g. whisper-1 / whisper-large-v3 / Systran/faster-whisper-small */
+    model?: string
+  }
 }
 
 /** providerId -> API key. Stored separately from settings, owner-only. */

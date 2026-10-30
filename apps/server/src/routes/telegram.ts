@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto'
 import { loadSettings, updateSettings, loadCredentials, saveCredentials } from '../config/store.js'
 import { getMe } from '../telegram/api.js'
 import { startBot, stopBot, restartBot } from '../telegram/bot.js'
+import { STT_KEY } from '../telegram/transcribe.js'
 
 const TOKEN_KEY = 'telegram'
 const newCode = () => String(randomInt(100000, 1000000))
@@ -10,11 +11,11 @@ const newCode = () => String(randomInt(100000, 1000000))
 export async function telegramRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/telegram/status', async () => {
     const settings = await loadSettings()
-    const hasToken = Boolean((await loadCredentials())[TOKEN_KEY])
+    const creds = await loadCredentials()
     const tg = settings.telegram
     return {
       enabled: Boolean(tg?.enabled),
-      hasToken,
+      hasToken: Boolean(creds[TOKEN_KEY]),
       botUsername: tg?.botUsername,
       paired: Boolean(tg?.ownerId),
       ownerId: tg?.ownerId,
@@ -22,6 +23,9 @@ export async function telegramRoutes(app: FastifyInstance): Promise<void> {
       pairingCode: tg?.ownerId ? undefined : tg?.pairingCode,
       defaultModel: tg?.defaultModel,
       defaultWorkspace: tg?.defaultWorkspace,
+      // Voice speech-to-text config (the API key itself is never returned).
+      transcription: tg?.transcription,
+      hasSttKey: Boolean(creds[STT_KEY]),
     }
   })
 
@@ -78,13 +82,26 @@ export async function telegramRoutes(app: FastifyInstance): Promise<void> {
   })
 
   app.patch('/api/telegram/settings', async (req) => {
-    const { defaultModel, defaultWorkspace } = req.body as { defaultModel?: string; defaultWorkspace?: string }
+    const { defaultModel, defaultWorkspace, transcription, sttKey } = req.body as {
+      defaultModel?: string
+      defaultWorkspace?: string
+      transcription?: { baseUrl?: string; model?: string }
+      sttKey?: string
+    }
     await updateSettings((s) => {
       if (!s.telegram) s.telegram = { enabled: false }
       if (defaultModel !== undefined) s.telegram.defaultModel = defaultModel
       if (defaultWorkspace !== undefined) s.telegram.defaultWorkspace = defaultWorkspace
+      if (transcription !== undefined) s.telegram.transcription = transcription
       return s
     })
+    // The STT API key lives in the credentials vault, never in settings.
+    if (sttKey !== undefined) {
+      const creds = await loadCredentials()
+      if (sttKey.trim()) creds[STT_KEY] = sttKey.trim()
+      else delete creds[STT_KEY]
+      await saveCredentials(creds)
+    }
     return { ok: true }
   })
 
