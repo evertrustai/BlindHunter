@@ -335,10 +335,17 @@ export function ChatView({
   }
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // Whether the current turn's run actually finished (got an `end` event), vs the
+  // stream merely dropping — which is what we reconnect through.
+  const endedRef = useRef(false)
 
   // Apply one streamed agent event to local state. Shared by the live send path
   // and by reconnecting to an in-progress background run, so both render identically.
   const handleEvent = useCallback((e: AgentEvent) => {
+    if (e.type === 'end') {
+      endedRef.current = true
+      return
+    }
     if (e.type === 'usage') {
       setUsage({ prompt: e.prompt ?? 0, completion: e.completion ?? 0, total: e.total ?? 0, context: e.context ?? 0 })
       return
@@ -413,15 +420,34 @@ export function ChatView({
     onUpdated?.()
   }
 
-  // Send a new message. The run executes on the server and survives this client
-  // disconnecting; the user bubble arrives via the echoed `user_message` event.
-  async function send(prompt: string, images?: string[]) {
-    applyMentionTakeover(prompt)
+  /**
+   * Drive one turn's stream to the end, surviving dropped connections. A long hunt
+   * can lose the SSE (idle gap, proxy/socket timeout) while the run keeps going on the
+   * server; if the stream ends without an `end` event and the run is still active, we
+   * reload the baseline transcript and re-attach — so the chat never looks "stopped".
+   */
+  async function drive(open: (ctrl: AbortController) => Promise<void>) {
     beginTurn()
     const ctrl = new AbortController()
     abortRef.current = ctrl
+    endedRef.current = false
     try {
-      await streamMessage(session.id, prompt, modelSel, permission, effort, handleEvent, ctrl.signal, images)
+      await open(ctrl)
+      while (!endedRef.current && !ctrl.signal.aborted) {
+        await new Promise((r) => setTimeout(r, 500)) // brief backoff before re-attaching
+        if (endedRef.current || ctrl.signal.aborted) break
+        const stillRunning = await api
+          .getSession(session.id)
+          .then((s) => Boolean(s.running))
+          .catch(() => false)
+        if (!stillRunning) {
+          // The run finished while we were disconnected — sync to the final transcript.
+          await loadHistory()
+          break
+        }
+        await loadHistory() // reset to the persisted baseline…
+        await subscribeStream(session.id, handleEvent, ctrl.signal) // …then replay live
+      }
     } catch (err) {
       // Disconnecting (stop / unmount) aborts the fetch — that isn't an error.
       if (!ctrl.signal.aborted) {
@@ -432,21 +458,17 @@ export function ChatView({
     }
   }
 
+  // Send a new message. The run executes on the server and survives this client
+  // disconnecting; the user bubble arrives via the echoed `user_message` event.
+  async function send(prompt: string, images?: string[]) {
+    applyMentionTakeover(prompt)
+    await drive((ctrl) => streamMessage(session.id, prompt, modelSel, permission, effort, handleEvent, ctrl.signal, images))
+  }
+
   // Reconnect to a session's in-progress background run: replay buffered events,
   // then stream live ones. Used when returning to a session whose run is active.
   async function reconnect() {
-    beginTurn()
-    const ctrl = new AbortController()
-    abortRef.current = ctrl
-    try {
-      await subscribeStream(session.id, handleEvent, ctrl.signal)
-    } catch (err) {
-      if (!ctrl.signal.aborted) {
-        setItems((prev) => [...prev, { kind: 'error', text: err instanceof Error ? err.message : String(err) }])
-      }
-    } finally {
-      endTurn()
-    }
+    await drive((ctrl) => subscribeStream(session.id, handleEvent, ctrl.signal))
   }
 
   // The Stop button: actually stop the server-side run (not just disconnect).
@@ -638,26 +660,42 @@ export function ChatView({
       <div className="chat-scroll">
         <div className="chat-inner">
           {(() => {
-            const nodes: ReactNode[] = []
-            let batch: ToolItem[] = []
-            const flush = () => {
-              if (batch.length) {
-                nodes.push(<ToolGroup key={`g${batch[0].id}`} tools={batch} onOpenFile={onOpenFile} />)
-                batch = []
+            const agentName = activeAgent && !activeAgent.builtin ? `@${activeAgent.name}` : 'Pentest Mode'
+
+            // One assistant turn's content: assistant text, grouped tool runs, approvals, errors.
+            const renderTurnBody = (turn: Item[]): ReactNode[] => {
+              const inner: ReactNode[] = []
+              let batch: ToolItem[] = []
+              const flush = () => {
+                if (batch.length) {
+                  inner.push(<ToolGroup key={`g${batch[0].id || inner.length}`} tools={batch} onOpenFile={onOpenFile} />)
+                  batch = []
+                }
               }
-            }
-            items.forEach((item, i) => {
-              // Group consecutive completed/running tool calls into one summary line.
-              if (item.kind === 'tool' && item.approval !== 'pending') {
-                batch.push(item)
-                return
-              }
+              turn.forEach((it, k) => {
+                if (it.kind === 'tool' && it.approval !== 'pending') {
+                  batch.push(it)
+                  return
+                }
+                flush()
+                if (it.kind === 'tool') inner.push(<ToolApproval item={it} key={`ap${k}`} onApprove={handleApprove} />)
+                else if (it.kind === 'assistant') inner.push(<Markdown key={`m${k}`} text={it.text} />)
+                else if (it.kind === 'error') inner.push(<ChatError text={it.text} key={`e${k}`} />)
+              })
               flush()
-              if (item.kind === 'tool') {
-                nodes.push(<ToolApproval item={item} key={i} onApprove={handleApprove} />)
-              } else if (item.kind === 'user') {
+              return inner
+            }
+
+            // Group the flat item list into turns: each user message is its own bubble; the
+            // assistant/tool/error run after it is one turn under an avatar + name header.
+            const nodes: ReactNode[] = []
+            let i = 0
+            let block = 0
+            while (i < items.length) {
+              const item = items[i]
+              if (item.kind === 'user') {
                 nodes.push(
-                  <div className="msg user" key={i}>
+                  <div className="msg user" key={`b${block++}`}>
                     <div className="bubble">
                       {item.images && item.images.length > 0 && (
                         <div className="msg-imgs">
@@ -670,19 +708,23 @@ export function ChatView({
                     </div>
                   </div>,
                 )
-              } else if (item.kind === 'assistant') {
-                nodes.push(
-                  <div className="msg assistant" key={i}>
-                    <div className="bubble">
-                      <Markdown text={item.text} />
-                    </div>
-                  </div>,
-                )
-              } else {
-                nodes.push(<ChatError text={item.text} key={i} />)
+                i++
+                continue
               }
-            })
-            flush()
+              const turn: Item[] = []
+              while (i < items.length && items[i].kind !== 'user') turn.push(items[i++])
+              nodes.push(
+                <div className="turn" key={`b${block++}`}>
+                  <div className="turn-avatar" aria-hidden>
+                    ⬡
+                  </div>
+                  <div className="turn-body">
+                    <div className="turn-name">{agentName}</div>
+                    {renderTurnBody(turn)}
+                  </div>
+                </div>,
+              )
+            }
             return nodes
           })()}
           <div ref={bottomRef} />

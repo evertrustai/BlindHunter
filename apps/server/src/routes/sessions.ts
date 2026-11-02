@@ -53,9 +53,22 @@ function streamRunToClient(sessionId: string, req: FastifyRequest, reply: Fastif
       /* client gone */
     }
   }
+  // Heartbeat: a long hunt can go minutes between events (a slow tool, the model
+  // thinking), and an intermediary (dev proxy, OS socket, the browser) may drop an
+  // idle connection — which used to make the chat look stopped. An SSE comment line
+  // (`:`-prefixed) is ignored by the client parser but keeps the socket warm.
+  const ping = setInterval(() => {
+    try {
+      raw.write(': ping\n\n')
+    } catch {
+      /* client gone */
+    }
+  }, 15000)
+  const stop = () => clearInterval(ping)
   const unsub = subscribe(sessionId, (ev) => {
     send(ev)
     if (ev.type === 'end') {
+      stop()
       try {
         raw.end()
       } catch {
@@ -64,6 +77,7 @@ function streamRunToClient(sessionId: string, req: FastifyRequest, reply: Fastif
     }
   })
   if (!unsub) {
+    stop()
     send({ type: 'end' })
     try {
       raw.end()
@@ -72,7 +86,10 @@ function streamRunToClient(sessionId: string, req: FastifyRequest, reply: Fastif
     }
     return
   }
-  req.raw.on('close', () => unsub())
+  req.raw.on('close', () => {
+    stop()
+    unsub()
+  })
 }
 
 export async function sessionRoutes(app: FastifyInstance): Promise<void> {
