@@ -282,11 +282,11 @@
   padding: 22px 20px;
 }
 .chat-inner {
-  max-width: 760px;
+  max-width: 820px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 .msg {
   display: flex;
@@ -294,26 +294,15 @@
 .msg.user {
   justify-content: flex-end;
 }
-.msg.assistant {
-  justify-content: flex-start;
-}
 .msg .bubble {
-  max-width: 74%;
-  border-radius: 14px;
-  padding: 10px 14px;
+  max-width: 80%;
+  border-radius: 15px;
+  padding: 9px 14px;
 }
 .msg.user .bubble {
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-bottom-right-radius: 5px;
-}
-/* Assistant replies read as plain text on the page — no bubble, border or tint. */
-.msg.assistant .bubble {
-  background: none;
-  border: none;
-  padding: 0;
-  border-radius: 0;
-  max-width: 100%;
 }
 .msg .bubble p {
   margin: 0 0 8px;
@@ -324,6 +313,43 @@
 }
 .msg .bubble p:last-child {
   margin-bottom: 0;
+}
+
+/* ---- assistant turn: avatar gutter + content body (BlindHunter identity) ---- */
+.turn {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+}
+.turn-avatar {
+  flex: none;
+  width: 29px;
+  height: 29px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+  font-size: 14px;
+  color: #fff;
+  background: linear-gradient(150deg, var(--amber), color-mix(in srgb, var(--amber) 55%, #5e1000));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--amber) 28%, transparent);
+}
+.turn-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-top: 1px;
+}
+.turn-name {
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--txt);
+}
+.turn-body .md {
+  margin-top: -1px;
 }
 .msg-imgs {
   display: flex;
