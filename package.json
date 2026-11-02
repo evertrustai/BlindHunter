@@ -1,7 +1,7 @@
 {
   "name": "blindhunter",
   "private": true,
-  "version": "0.1.0.1",
+  "version": "0.2.0",
   "description": "Privacy-first, model-agnostic, open-source AI coding agent for authorized security testing.",
   "license": "MIT",
   "author": "evertrustai",

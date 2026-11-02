@@ -3,7 +3,7 @@ import maintainerMark from '../assets/maintainer-mark.jpg'
 import { api } from '../lib/api'
 
 const SPEC: { k: string; v: string }[] = [
-  { k: 'Version', v: '0.1.0.1' },
+  { k: 'Version', v: '0.2.0' },
   { k: 'License', v: 'MIT' },
 ]
 
@@ -33,7 +33,7 @@ export function AboutPane() {
         window.open(r.url, '_blank', 'noreferrer')
       }
     } catch {
-      setUpd({ current: '0.1.0.1', latest: null, updateAvailable: false, url: 'https://github.com/evertrustai/BlindHunter', state: 'error' })
+      setUpd({ current: '0.2.0', latest: null, updateAvailable: false, url: 'https://github.com/evertrustai/BlindHunter', state: 'error' })
     } finally {
       setChecking(false)
     }

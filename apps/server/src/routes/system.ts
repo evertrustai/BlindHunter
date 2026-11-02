@@ -20,7 +20,7 @@ function openInOS(target: string, kind: 'file' | 'dir'): void {
   }
 }
 
-const VERSION = '0.1.0.1'
+const VERSION = '0.2.0'
 const REPO = 'evertrustai/BlindHunter'
 
 function versionParts(v: string): number[] {

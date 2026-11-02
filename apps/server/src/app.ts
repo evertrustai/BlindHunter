@@ -66,7 +66,7 @@ export async function buildApp() {
   // Connect configured MCP servers in the background so startup isn't blocked.
   void initMcp()
 
-  app.get('/api/health', async () => ({ ok: true, name: 'blindhunter', version: '0.1.0.1' }))
+  app.get('/api/health', async () => ({ ok: true, name: 'blindhunter', version: '0.2.0' }))
 
   await providerRoutes(app)
   await modelRoutes(app)
